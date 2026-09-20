@@ -10,15 +10,20 @@
   <rect x="8" y="8" width="304" height="304" rx="64" fill="url(#bg)"/>
   <rect x="8" y="8" width="304" height="304" rx="64" fill="none" stroke="#2C5E22" stroke-width="4" opacity="0.35"/>
 
-  <!-- Charging plug body -->
-  <g>
-    <rect x="102" y="96" width="116" height="112" rx="24" fill="#FFFFFF"/>
-    <!-- pins -->
-    <rect x="132" y="66" width="16" height="34" rx="7" fill="#FFFFFF"/>
-    <rect x="172" y="66" width="16" height="34" rx="7" fill="#FFFFFF"/>
-  </g>
+  <!-- Flowing cable, drawn first so the plug sits on top of its start -->
+  <path d="M 118 108
+           C 150 108, 150 150, 182 158
+           C 214 166, 214 208, 176 222
+           C 152 231, 150 248, 168 258"
+        fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
 
-  <!-- Lightning bolt, centered on the plug body -->
-  <path d="M 174 122 L 142 172 L 164 172 L 152 210 L 194 156 L 170 156 Z"
-        fill="#3E8E2F"/>
+  <!-- Small spark at the cable's end -->
+  <path d="M 176 244 L 162 268 L 172 268 L 164 286 L 186 260 L 174 260 Z" fill="#FFFFFF"/>
+
+  <!-- Plug head -->
+  <g>
+    <rect x="78" y="82" width="66" height="56" rx="16" fill="#FFFFFF"/>
+    <rect x="92" y="58" width="12" height="28" rx="6" fill="#FFFFFF"/>
+    <rect x="118" y="58" width="12" height="28" rx="6" fill="#FFFFFF"/>
+  </g>
 </svg>

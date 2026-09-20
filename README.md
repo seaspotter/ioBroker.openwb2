@@ -18,7 +18,8 @@ instant-charging targets, chargepoint lock, battery mode, IO outputs, ...) from 
 
 > **Disclaimer:** this is an independent, community-maintained adapter. It is not affiliated with, endorsed
 > by, or supported by openWB GmbH & Co. KG. "openWB" is a trademark of its respective owner; the adapter
-> icon is an original design inspired by openWB's colors, not a reproduction of their logo.
+> icon is an original design (a plug with a flowing cable, a generic EV-charging motif) and not a
+> reproduction of, or derived from, openWB's own logo.
 
 ### Why HTTP, not MQTT
 
