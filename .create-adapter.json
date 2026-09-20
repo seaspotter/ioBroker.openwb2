@@ -1,0 +1,39 @@
+{
+    "adapterName": "openwb2",
+    "title": "OpenWB 2",
+    "description": "Reads chargepoints, counters, battery, PV and consumers from an openWB 2 wallbox controller via its simpleAPI HTTP interface, and lets you control charging",
+    "keywords": "openwb,ev-charging,wallbox,simpleapi,pv",
+    "contributors": "",
+    "expert": "yes",
+    "features": [
+        "adapter"
+    ],
+    "adminFeatures": [],
+    "type": "energy",
+    "startMode": "daemon",
+    "connectionType": "local",
+    "dataSource": "poll",
+    "connectionIndicator": "yes",
+    "language": "TypeScript",
+    "nodeVersion": "22",
+    "adminUi": "json",
+    "tools": [
+        "ESLint"
+    ],
+    "eslintConfig": "official",
+    "releaseScript": "no",
+    "devServer": "local",
+    "devServerPort": 8083,
+    "indentation": "Space (4)",
+    "quotes": "single",
+    "authorName": "SeaSpotter",
+    "authorGithub": "seaspotter",
+    "authorEmail": "seatowage@gmail.com",
+    "gitRemoteProtocol": "HTTPS",
+    "gitCommit": "no",
+    "defaultBranch": "main",
+    "license": "MIT License",
+    "dependabot": "no",
+    "replay": "/tmp/claude-1000/-home-seaspotter-github-iobroker-openwb2/73231a3d-3a44-4d81-92ad-a66a5e90e140/scratchpad/create-adapter-answers.json",
+    "creatorVersion": "3.1.5"
+}

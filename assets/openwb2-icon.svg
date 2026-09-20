@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7CC142"/>
+      <stop offset="100%" stop-color="#3E8E2F"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Badge -->
+  <rect x="8" y="8" width="304" height="304" rx="64" fill="url(#bg)"/>
+  <rect x="8" y="8" width="304" height="304" rx="64" fill="none" stroke="#2C5E22" stroke-width="4" opacity="0.35"/>
+
+  <!-- Charging plug body -->
+  <g>
+    <rect x="102" y="96" width="116" height="112" rx="24" fill="#FFFFFF"/>
+    <!-- pins -->
+    <rect x="132" y="66" width="16" height="34" rx="7" fill="#FFFFFF"/>
+    <rect x="172" y="66" width="16" height="34" rx="7" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Lightning bolt, centered on the plug body -->
+  <path d="M 174 122 L 142 172 L 164 172 L 152 210 L 194 156 L 170 156 Z"
+        fill="#3E8E2F"/>
+</svg>
