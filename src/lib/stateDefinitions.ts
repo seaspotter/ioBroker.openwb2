@@ -11,6 +11,17 @@ export interface ReadFieldDef {
     sourceField: string;
     /** index into the array at sourceField, for per-phase fields like voltages[0..2] */
     arrayIndex?: number;
+    /**
+     * Field path relative to `openWB/simpleAPI/<type>/<id>/`, with any `get/` prefix already
+     * normalized away by mqttTopics.ts's parser (counter/battery/pv/consumer only publish a
+     * nested `get/<field>` mirror; chargepoint additionally has a flatter mirror with no `get/`
+     * prefix at all, which most chargepoint fields use instead - see CHARGEPOINT_READ_FIELDS'
+     * header comment - so field tables never need to think about which shape applies). 1-based for
+     * phase fields (`voltages/1`, not `voltages/0`) to match the real wire format, verified
+     * against a live device. Undefined for the handful of fields that only exist in the HTTP
+     * `_all` response with no MQTT equivalent found.
+     */
+    mqttField?: string;
     /** ioBroker state id suffix, relative to the component's channel */
     stateId: string;
     name: string;
@@ -37,26 +48,57 @@ export interface WriteFieldDef {
     writeTransform?: (value: ioBroker.StateValue) => string | number;
 }
 
-function num(sourceField: string, stateId: string, name: string, role: string, unit?: string): ReadFieldDef {
-    return { sourceField, stateId, name, type: 'number', role, unit };
+/**
+ * @param sourceField - key inside the HTTP `_all` response object
+ * @param stateId - ioBroker state id suffix
+ * @param name - human-readable label
+ * @param role - ioBroker role
+ * @param unit - ioBroker unit
+ * @param mqttField - topic path override; defaults to `sourceField` (true for most fields - see
+ *   the per-table comments for the ones where the real MQTT field name actually differs)
+ */
+function num(
+    sourceField: string,
+    stateId: string,
+    name: string,
+    role: string,
+    unit?: string,
+    mqttField: string | undefined = sourceField,
+): ReadFieldDef {
+    return { sourceField, stateId, name, type: 'number', role, unit, mqttField };
 }
 
-function str(sourceField: string, stateId: string, name: string, role = 'text'): ReadFieldDef {
-    return { sourceField, stateId, name, type: 'string', role };
+function str(
+    sourceField: string,
+    stateId: string,
+    name: string,
+    role = 'text',
+    mqttField: string | undefined = sourceField,
+): ReadFieldDef {
+    return { sourceField, stateId, name, type: 'string', role, mqttField };
 }
 
-function bool(sourceField: string, stateId: string, name: string, role = 'indicator'): ReadFieldDef {
-    return { sourceField, stateId, name, type: 'boolean', role };
+function bool(
+    sourceField: string,
+    stateId: string,
+    name: string,
+    role = 'indicator',
+    mqttField: string | undefined = sourceField,
+): ReadFieldDef {
+    return { sourceField, stateId, name, type: 'boolean', role, mqttField };
 }
 
 /**
- * Expands an array-valued source field (e.g. "voltages") into one ReadFieldDef per phase.
+ * Expands an array-valued source field (e.g. "voltages") into one ReadFieldDef per phase. The
+ * real wire format is 1-based (`voltages/1`, not `voltages/0`) - verified live against a real
+ * device, for both the nested `get/voltages/<n>` shape (counter/battery/pv/consumer) and
+ * chargepoint's flatter `<field>/<n>` mirror (see CHARGEPOINT_READ_FIELDS' header comment).
  *
- * @param sourceField
- * @param stateIdPrefix
- * @param namePrefix
- * @param role
- * @param unit
+ * @param sourceField - key inside the HTTP `_all` response object
+ * @param stateIdPrefix - ioBroker state id prefix (phase number gets appended)
+ * @param namePrefix - human-readable label prefix
+ * @param role - ioBroker role
+ * @param unit - ioBroker unit
  */
 function phases(
     sourceField: string,
@@ -68,6 +110,7 @@ function phases(
     return [0, 1, 2].map(i => ({
         sourceField,
         arrayIndex: i,
+        mqttField: `${sourceField}/${i + 1}`,
         stateId: `${stateIdPrefix}_p${i + 1}`,
         name: `${namePrefix} phase ${i + 1}`,
         type: 'number' as const,
@@ -76,6 +119,16 @@ function phases(
     }));
 }
 
+/*
+ * Chargepoint mqttField values default to a *flat* `openWB/simpleAPI/chargepoint/<id>/<field>`
+ * mirror - verified live against a real device to exist for chargepoint specifically (not
+ * present for counter/battery/pv/consumer, which only have the nested `get/<field>` mirror).
+ * This flat layer conveniently reuses the same field names as the HTTP `_all` response's JSON
+ * keys almost everywhere, including chargemode/manual_lock/pro_soc (which the nested nested
+ * `get/`-mirror layer does *not* expose under those names) - so most fields below need no
+ * override at all. The handful of exceptions (a different name, or no flat equivalent at all,
+ * falling back to a nested path) are called out explicitly.
+ */
 export const CHARGEPOINT_READ_FIELDS: ReadFieldDef[] = [
     num('power', 'power', 'Power', 'value.power', 'W'),
     ...phases('voltages', 'voltage', 'Voltage', 'value.voltage', 'V'),
@@ -99,18 +152,65 @@ export const CHARGEPOINT_READ_FIELDS: ReadFieldDef[] = [
     ...phases('power_factors', 'powerFactor', 'Power factor', 'value'),
     str('rfid', 'rfid', 'Last RFID tag'),
     str('rfid_timestamp', 'rfidTimestamp', 'Last RFID tag timestamp'),
-    str('config_name', 'configName', 'Chargepoint name'),
-    str('connected_vehicle_name', 'connectedVehicleName', 'Connected vehicle name'),
-    str('charge_template_name', 'chargeTemplateName', 'Charge template name'),
-    num('min_current', 'minCurrent', 'Minimum current for active mode', 'value.current', 'A'),
-    num('instant_charging_current', 'instantChargingCurrent', 'Instant charging current', 'value.current', 'A'),
-    num('pv_charging_min_current', 'pvChargingMinCurrent', 'PV charging minimum current', 'value.current', 'A'),
+    // No live MQTT equivalent found (flat mirror doesn't include it) - stays HTTP-only for now.
+    { ...str('config_name', 'configName', 'Chargepoint name'), mqttField: undefined },
+    // Flat mirror calls this "vehicle_name", not "connected_vehicle_name".
+    str('connected_vehicle_name', 'connectedVehicleName', 'Connected vehicle name', 'text', 'vehicle_name'),
+    // No live MQTT equivalent found - stays HTTP-only for now.
+    { ...str('charge_template_name', 'chargeTemplateName', 'Charge template name'), mqttField: undefined },
+    // No live MQTT equivalent found (this was a value PHP derives by branching on the active
+    // chargemode) - stays HTTP-only for now.
+    {
+        ...num('min_current', 'minCurrent', 'Minimum current for active mode', 'value.current', 'A'),
+        mqttField: undefined,
+    },
+    // No live MQTT equivalent found under this exact name - stays HTTP-only for now.
+    {
+        ...num('instant_charging_current', 'instantChargingCurrent', 'Instant charging current', 'value.current', 'A'),
+        mqttField: undefined,
+    },
+    {
+        ...num('pv_charging_min_current', 'pvChargingMinCurrent', 'PV charging minimum current', 'value.current', 'A'),
+        mqttField: undefined,
+    },
     str('instant_charging_limit', 'instantChargingLimit', 'Instant charging limit type'),
-    num('instant_charging_amount', 'instantChargingAmount', 'Instant charging amount limit', 'value.energy', 'kWh'),
-    num('instant_charging_soc', 'instantChargingSoc', 'Instant charging SoC limit', 'value.battery', '%'),
+    // Flat mirror calls this "instant_charging_limit_amount", not "instant_charging_amount".
+    num(
+        'instant_charging_amount',
+        'instantChargingAmount',
+        'Instant charging amount limit',
+        'value.energy',
+        'kWh',
+        'instant_charging_limit_amount',
+    ),
+    // Flat mirror calls this "instant_charging_limit_soc", not "instant_charging_soc".
+    num(
+        'instant_charging_soc',
+        'instantChargingSoc',
+        'Instant charging SoC limit',
+        'value.battery',
+        '%',
+        'instant_charging_limit_soc',
+    ),
+    // Note: HTTP's max_price_eco is scaled x100000 for legacy reasons (see ParameterHandler.php);
+    // the MQTT value is the real, unscaled price. This read-only mirror intentionally shows the
+    // unscaled MQTT value - only the HTTP write side (chargepoint.<id>.control.maxPriceEco) uses
+    // the x100000 convention, and that's unaffected by this read path.
     num('max_price_eco', 'maxPriceEco', 'ECO mode max price', 'value'),
+    // Best-effort mapping, not fully disambiguated live (both this and pro_soc read null on the
+    // test device - no vehicle with live SoC data was plugged in): the flat mirror's bare "soc"
+    // is inferred to be the *connected vehicle's* SoC (matching this field), by the same
+    // naming convention that makes "pro_soc" the chargepoint's own SoC reading.
     num('soc', 'soc', 'Connected vehicle state of charge', 'value.battery', '%'),
-    num('range_charged', 'rangeCharged', 'Range added by charging', 'value', 'km'),
+    // No flat equivalent - falls back to the nested get/ path.
+    num(
+        'range_charged',
+        'rangeCharged',
+        'Range added by charging',
+        'value',
+        'km',
+        'connected_vehicle/soc/range_charged',
+    ),
     str('chargemode', 'chargemode', 'Current chargemode'),
     bool('manual_lock', 'manualLock', 'Manually locked'),
 ];
@@ -266,8 +366,17 @@ export const PV_READ_FIELDS: ReadFieldDef[] = [
     num('fault_state', 'faultState', 'Fault state', 'value'),
 ];
 
+/*
+ * Not live-verified - no consumer module was configured on the test device (consumer support
+ * needs openWB/core PR #3981 or later, see project memory). mqttField values below are inferred
+ * from the same nested `get/<field>` mirroring pattern confirmed for counter/battery/pv, plus the
+ * PHP source's own topic layout for usage_type specifically (read from a separate
+ * `openWB/consumer/<id>/usage` JSON object, not a `get/usage_type` topic - the daemon's generic
+ * flattening would turn that into `usage/type`). Worth re-confirming against a real consumer
+ * module before relying on this table.
+ */
 export const CONSUMER_READ_FIELDS: ReadFieldDef[] = [
-    str('usage_type', 'usageType', 'Usage type'),
+    str('usage_type', 'usageType', 'Usage type', 'text', 'usage/type'),
     num('power', 'power', 'Power', 'value.power', 'W'),
     ...phases('currents', 'current', 'Current', 'value.current', 'A'),
     ...phases('voltages', 'voltage', 'Voltage', 'value.voltage', 'V'),
@@ -351,6 +460,50 @@ export function commonFromWriteField(field: WriteFieldDef): ioBroker.StateCommon
 }
 
 /**
+ * Builds a `mqttField -> ReadFieldDef` lookup for one type's read field table, for routing
+ * incoming MQTT messages (parsed via mqttTopics.ts) to the right state. Fields with no
+ * `mqttField` (no live MQTT equivalent found) are simply absent from the map.
+ *
+ * @param fields - one type's read field table (e.g. CHARGEPOINT_READ_FIELDS)
+ */
+export function buildMqttFieldLookup(fields: ReadFieldDef[]): Map<string, ReadFieldDef> {
+    const lookup = new Map<string, ReadFieldDef>();
+    for (const field of fields) {
+        if (field.mqttField !== undefined) {
+            lookup.set(field.mqttField, field);
+        }
+    }
+    return lookup;
+}
+
+/**
+ * Coerces an already-extracted raw value to a field's declared ioBroker type. Shared by
+ * `extractReadValue` (HTTP path, raw comes out of a JSON blob) and `MqttReader` (raw comes out of
+ * `normalizeMqttValue`) so both paths apply exactly the same rules.
+ *
+ * @param raw - raw value, already pulled out of its source structure
+ * @param type - the field's declared type
+ */
+export function coerceFieldValue(raw: unknown, type: 'number' | 'string' | 'boolean'): ioBroker.StateValue {
+    switch (type) {
+        case 'number': {
+            const n = typeof raw === 'number' ? raw : Number(raw);
+            return Number.isFinite(n) ? n : 0;
+        }
+        case 'boolean':
+            return Boolean(raw);
+        case 'string':
+        default:
+            if (typeof raw === 'string') {
+                return raw;
+            }
+            // number/boolean stringify meaningfully; anything else (object, undefined, null) has
+            // no sensible string form, so fall back to '' rather than risk '[object Object]'.
+            return typeof raw === 'number' || typeof raw === 'boolean' ? String(raw) : '';
+    }
+}
+
+/**
  * Reads one field's value out of a component's response object (e.g. `data.chargepoint_0`),
  * coercing to the field's declared type. simpleapi.php's handlers always populate every field
  * with a default (0/''/false) rather than omitting it, so missing/null here just means "use the
@@ -364,22 +517,5 @@ export function extractReadValue(component: Record<string, unknown>, field: Read
     if (field.arrayIndex !== undefined) {
         raw = Array.isArray(raw) ? raw[field.arrayIndex] : undefined;
     }
-
-    switch (field.type) {
-        case 'number': {
-            const n = typeof raw === 'number' ? raw : Number(raw);
-            return Number.isFinite(n) ? n : 0;
-        }
-        case 'boolean':
-            return Boolean(raw);
-        case 'string':
-        default:
-            if (typeof raw === 'string') {
-                return raw;
-            }
-            // number/boolean stringify meaningfully; anything else (object, undefined, null -
-            // shouldn't happen given simpleapi.php's response shapes, but not guaranteed) has no
-            // sensible string form, so fall back to '' rather than risk '[object Object]'.
-            return typeof raw === 'number' || typeof raw === 'boolean' ? String(raw) : '';
-    }
+    return coerceFieldValue(raw, field.type);
 }

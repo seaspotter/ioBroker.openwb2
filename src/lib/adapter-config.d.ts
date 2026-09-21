@@ -20,21 +20,24 @@ declare global {
             username: string;
             /** password, used when authMethod is "userpass" */
             password: string;
-            /** HTTP request timeout in ms */
+            /** HTTP request timeout in ms - still used for writes (control states) and Test connection */
             requestTimeoutMs: number;
-            /** seconds between poll cycles */
-            pollIntervalS: number;
-            /** max number of simpleapi.php requests kept in flight at once during a poll cycle */
-            pollConcurrency: number;
-            /** minutes between automatic re-discovery runs */
+            /** hostname or IP address of the openWB MQTT broker - usually the same device as `host` */
+            mqttHost: string;
+            /** MQTT broker port (1883 unauthenticated is what openWB exposes by default) */
+            mqttPort: number;
+            /** MQTT broker username, if the broker requires auth */
+            mqttUsername: string;
+            /** MQTT broker password, if the broker requires auth */
+            mqttPassword: string;
+            /** minutes between automatic checks for newly-observed component IDs (see MqttReader) */
             discoveryIntervalMin: number;
             /**
              * JSON-encoded ComponentTableRow[] (see lib/componentTable.ts) - the single source of
              * truth for which component IDs are known and enabled. Populated by the admin UI's
-             * Components tab, either from a "Probe now" discovery run (requires the openWB core to
-             * support list_components, i.e. openWB/core PR #3981 or later) or added by hand, and
-             * merged into automatically by the background rediscovery timer when it finds IDs not
-             * already present.
+             * Components tab, either from a "Probe now" run (reads MqttReader's already-observed
+             * IDs, no network round-trip needed) or added by hand, and merged into automatically by
+             * the background rediscovery timer when it finds IDs not already present.
              */
             componentTable: string;
         }

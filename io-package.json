@@ -62,7 +62,7 @@
         "type": "energy",
         "compact": true,
         "connectionType": "local",
-        "dataSource": "poll",
+        "dataSource": "push",
         "adminUI": {
             "config": "materialize"
         },
@@ -87,11 +87,14 @@
         "username": "",
         "password": "",
         "requestTimeoutMs": 5000,
-        "pollIntervalS": 15,
-        "pollConcurrency": 4,
+        "mqttHost": "",
+        "mqttPort": 1883,
+        "mqttUsername": "",
+        "mqttPassword": "",
         "discoveryIntervalMin": 60,
         "componentTable": "[]"
     },
+    "encryptedNative": ["token", "password", "mqttPassword"],
     "objects": [],
     "instanceObjects": [
         {

@@ -13,60 +13,58 @@
 ## openwb2 adapter for ioBroker
 
 Reads chargepoints, counters, battery, PV and consumers from an [openWB](https://openwb.de) 2 wallbox
-controller via its `simpleAPI` HTTP interface, and lets you control charging (chargemode, current limits,
-instant-charging targets, chargepoint lock, battery mode, IO outputs, ...) from ioBroker.
+controller live over MQTT, and lets you control charging (chargemode, current limits, instant-charging
+targets, chargepoint lock, battery mode, IO outputs, ...) via its `simpleAPI` HTTP interface, from ioBroker.
 
 > **Disclaimer:** this is an independent, community-maintained adapter. It is not affiliated with, endorsed
 > by, or supported by openWB GmbH & Co. KG. "openWB" is a trademark of its respective owner; the adapter
 > icon is an original design (a plug with a flowing cable, a generic EV-charging motif) and not a
 > reproduction of, or derived from, openWB's own logo.
 
-### Why HTTP, not MQTT
+### Why MQTT for reads, HTTP for writes
 
-openWB's own MQTT broker carries the same data with lower latency, and an earlier design note for this
-adapter recommended using it directly. This adapter deliberately uses `simpleAPI`'s HTTP interface instead,
-for simplicity - at the cost of `simpleapi.php` spawning a fresh `mosquitto_sub` process per request
-server-side (roughly 1-2.5s per request, not per adapter poll cycle - see below). If HTTP polling turns out
-to be too slow for your setup, the read path lives behind a narrow interface
-([`simpleApiClient.ts`](src/lib/simpleApiClient.ts)) that could be swapped for a direct MQTT connection later
-without touching object creation or the write path.
+An early version of this adapter polled `simpleapi.php` over HTTP for everything. That works, but
+`simpleapi.php` shells out to a fresh `mosquitto_sub` process per request server-side (roughly 1-2.5s per
+request) and, worse, has no reliable way to discover which component IDs actually exist - every read
+endpoint returns defaulted zeros for a nonexistent ID exactly like it would for a real, idle device, so
+there's no signal to probe for. MQTT doesn't have either problem: openWB already republishes normalized data
+under `openWB/simpleAPI/#` (retained, so a fresh subscribe immediately yields the current state of
+everything), and a topic for a nonexistent ID simply never arrives - discovery becomes free and reliable
+instead of a periodic network call. Writes stay on HTTP regardless: `simpleapi.php`'s control writes
+(chargemode, current limits, ...) do a read-modify-write of the whole `charge_template` JSON document
+server-side, and there's no reason to reimplement that logic just to avoid one occasional HTTP POST.
 
-To keep this workable, the adapter batches requests: `simpleapi.php` can't return two instances of the
-*same* component type in one HTTP call (it only keeps the last value for a repeated query parameter), but it
-can combine *different* types in one call. Each poll cycle therefore issues `max(count per type)` requests,
-not one request per device - see [`pollPlanner.ts`](src/lib/pollPlanner.ts).
+IO is the one exception - `openWB/simpleAPI/#` doesn't mirror it at all, so IO reads subscribe to the raw
+`openWB/io/states/+/get/#` namespace directly instead.
 
 ### Requirements
 
-- openWB 2.x with `simpleAPI` enabled and reachable over HTTP from your ioBroker host.
-- For automatic component discovery (the "Probe now" button), your openWB core needs
-  [PR #3981](https://github.com/openWB/core/pull/3981) or later merged - it's what adds the
-  `list_components` endpoint. Without it, discovery is unavailable and components must be added by hand in
-  the **Components** tab; the adapter detects this automatically and won't error, it'll just tell you to add
-  IDs manually.
+- openWB 2.x with `simpleAPI` enabled and its MQTT broker reachable from your ioBroker host (the same
+  device usually serves both the broker and the HTTP interface).
+- Consumer support specifically needs [PR #3981](https://github.com/openWB/core/pull/3981) or later merged
+  upstream - chargepoint/counter/battery/PV work on any current core.
 
 ### Configuration
 
 The admin UI has three tabs:
 
-- **Connection** - protocol/host/port, the path to `simpleapi.php` (defaults to
-  `/openWB/simpleAPI/simpleapi.php`), authentication (none / bearer token / username+password), request
-  timeout, and a **Test connection** button.
-- **Polling** - poll interval, how many requests may run in parallel per poll cycle, the background
-  rediscovery interval, and a **Rediscover now** button.
-- **Components** - the component discovery table. Press **Probe now** to query the device live; newly found
-  chargepoints/counters/batteries/PV/consumers/IO modules are added as new, enabled rows without touching any
-  row you've already edited. Untick or remove a row you don't want polled. A row a fresh probe no longer
-  reports is flagged, not deleted, in case the device is just temporarily offline. You can also add an ID by
-  hand (needed if `list_components` isn't available) - type, ID, **Add**. The background rediscovery timer
-  (Polling tab) uses the same "add, never remove" logic automatically, so a new device you plug in gets
-  picked up without a config-screen visit; the adapter instance restarts when it does (any native-config
-  change restarts an ioBroker adapter instance).
+- **Connection** - the HTTP side, used only for writes and the **Test connection** button:
+  protocol/host/port, the path to `simpleapi.php` (defaults to `/openWB/simpleAPI/simpleapi.php`),
+  authentication (none / bearer token / username+password), request timeout.
+- **MQTT** - the broker connection that drives all reads: host/port/username/password, the interval for
+  automatically checking for newly-observed component IDs, and a **Check now** button.
+- **Components** - the component discovery table. Press **Probe now** to see what the live MQTT connection
+  has already observed; newly found chargepoints/counters/batteries/PV/consumers/IO modules are added as
+  new, enabled rows without touching any row you've already edited. Untick or remove a row you don't want
+  active. A row no longer observed is flagged, not deleted, in case the device is just temporarily offline.
+  You can also add an ID by hand. The background check (MQTT tab) uses the same "add, never remove" logic
+  automatically, so a new device you plug in gets picked up without a config-screen visit; the adapter
+  instance restarts when it does (any native-config change restarts an ioBroker adapter instance).
 
 ### Object structure
 
 ```
-openwb2.0.info.connection                  boolean, true if the last poll cycle reached the device at all
+openwb2.0.info.connection                  boolean, true while connected to the MQTT broker
 openwb2.0.chargepoint.<id>.<field>          read-only: power, voltages/currents/powers per phase, soc,
                                              state_str, plug_state, charge_state, rfid, ...
 openwb2.0.chargepoint.<id>.control.<field>  writable: chargemode, chargecurrent, chargepointLock,
@@ -88,14 +86,15 @@ mirrored read-only values that happen to represent the same underlying setting.
 
 ### Known limitations
 
-- No MQTT fallback yet (see "Why HTTP, not MQTT" above) - if your device has many components, polling all of
-  them can take a few seconds per cycle; tune the poll interval and parallel-request count on the Polling
-  tab.
 - Component discovery only ever adds rows; nothing is ever deleted automatically. Remove stale entries
   yourself in the Components tab.
 - IO output *names* are read from the device (they're user-defined in openWB's own io module config), so
-  `io.<id>.digital.*`/`io.<id>.analog.*` objects only appear after the adapter has successfully polled that
-  IO module at least once.
+  `io.<id>.digital.*`/`io.<id>.analog.*` objects only appear after the adapter has received at least one
+  message for that IO module.
+- A handful of read-only chargepoint fields (`configName`, `chargeTemplateName`, `minCurrent`,
+  `instantChargingCurrent`, `pvChargingMinCurrent`) have no confirmed MQTT equivalent yet and simply won't
+  update - they're minor settings mirrors, not anything the write path depends on.
+- The MQTT broker connection currently has no TLS option in the admin UI - only plain `mqtt://`.
 
 ## Developer manual
 This section is intended for the developer.
@@ -132,7 +131,9 @@ released into the ioBroker repository, see
     ### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
-* (SeaSpotter) nothing yet
+* (SeaSpotter) Reads now come from a live MQTT connection (`openWB/simpleAPI/#` plus the raw IO
+  namespace) instead of HTTP polling - lower latency, and reliable component discovery. Writes
+  are unchanged (still HTTP). See the README's "Why MQTT for reads, HTTP for writes" section.
 
 ### 0.0.1 (2026-09-21)
 * (SeaSpotter) initial release

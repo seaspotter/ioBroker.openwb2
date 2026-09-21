@@ -39,12 +39,12 @@ interface ComponentsTabState {
 }
 
 /**
- * The component discovery table: press "Probe now" to fetch currently available IDs via
- * openWB's list_components endpoint (merged in as new enabled rows, existing rows/edits are never
- * touched), untick/remove rows you don't want polled, or add an ID by hand (needed if the
- * openWB core doesn't support list_components yet). native.componentTable (see
- * src/lib/componentTable.ts) is the single persisted source of truth - this component only ever
- * reads/writes it via props.native/onChange, exactly like the admin's own Save button.
+ * The component discovery table: press "Probe now" to see what the adapter's live MQTT
+ * connection has already observed (merged in as new enabled rows, existing rows/edits are never
+ * touched), untick/remove rows you don't want active, or add an ID by hand (e.g. for a component
+ * that hasn't published anything yet). native.componentTable (see src/lib/componentTable.ts) is
+ * the single persisted source of truth - this component only ever reads/writes it via
+ * props.native/onChange, exactly like the admin's own Save button.
  */
 export default class ComponentsTab extends React.Component<ComponentsTabProps, ComponentsTabState> {
     public constructor(props: ComponentsTabProps) {
@@ -134,7 +134,7 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                     </Button>
                     <span style={{ marginLeft: 16, opacity: 0.7 }}>
                         {I18n.t(
-                            'Requires openWB/core PR #3981 or later (list_components support). If unavailable, add IDs manually below.',
+                            'Shows what the live MQTT connection has already seen. Consumer support needs openWB/core PR #3981 or later; everything else works on any core. If nothing shows up yet, add an ID manually below.',
                         )}
                     </span>
                 </div>

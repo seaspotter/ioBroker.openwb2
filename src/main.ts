@@ -1,9 +1,7 @@
 import * as utils from '@iobroker/adapter-core';
 import { SimpleApiClient, type SimpleApiConnectionConfig, type SimpleApiResult } from './lib/simpleApiClient';
-import { discoverComponents, discoverViaListComponents, type ComponentIds } from './lib/discovery';
-import { parseComponentTable, serializeComponentTable, mergeDiscovered } from './lib/componentTable';
-import { buildPollPlan, type PollRequest } from './lib/pollPlanner';
-import { runWithConcurrency } from './lib/concurrency';
+import { MqttReader, type MqttConnectionConfig } from './lib/mqttReader';
+import { parseComponentTable, serializeComponentTable, mergeDiscovered, enabledIdsByType } from './lib/componentTable';
 import {
     CHARGEPOINT_READ_FIELDS,
     CHARGEPOINT_CONTROL_FIELDS,
@@ -12,19 +10,16 @@ import {
     PV_READ_FIELDS,
     CONSUMER_READ_FIELDS,
     GENERAL_CONTROL_FIELDS,
-    extractReadValue,
     commonFromReadField,
     commonFromWriteField,
     type ReadFieldDef,
 } from './lib/stateDefinitions';
 import {
     COMPONENT_TYPES,
-    RESPONSE_KEY_PREFIX,
     MAX_TIMER_MS,
-    DEFAULT_POLL_INTERVAL_S,
-    DEFAULT_POLL_CONCURRENCY,
     DEFAULT_DISCOVERY_INTERVAL_MIN,
     type ComponentType,
+    type ComponentIds,
 } from './lib/constants';
 
 const READ_FIELDS_BY_TYPE: Partial<Record<ComponentType, ReadFieldDef[]>> = {
@@ -46,12 +41,11 @@ interface ControlBinding {
 
 class Openwb2 extends utils.Adapter {
     private client!: SimpleApiClient;
+    private mqttReader!: MqttReader;
     private componentIds: ComponentIds = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [], io: [] };
     private readonly controlBindings = new Map<string, ControlBinding>();
     private readonly knownIoStates = new Set<string>();
-    private pollTimer: ioBroker.Interval | undefined;
     private discoveryTimer: ioBroker.Interval | undefined;
-    private polling = false;
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
         super({
@@ -65,52 +59,59 @@ class Openwb2 extends utils.Adapter {
     }
 
     /**
-     * Is called when databases are connected and adapter received configuration.
+     * Is called when databases are connected and adapter received configuration. Reads come from
+     * a persistent MQTT connection (see MqttReader) rather than polling; writes stay on
+     * SimpleApiClient/HTTP regardless of MQTT availability - the two are independent, so either
+     * one being unconfigured only disables that half, not the whole adapter.
      */
     private async onReady(): Promise<void> {
         await this.setState('info.connection', false, true);
         this.client = new SimpleApiClient(this.log);
+        this.mqttReader = new MqttReader(this.log);
 
         if (!this.config.host) {
-            this.log.error('No host configured - adapter will stay idle until configured');
-            return;
+            this.log.warn(
+                'No openWB HTTP host configured - writes and "Test connection" will not work until configured',
+            );
         }
 
         await this.createGeneralControlObjects();
 
-        const discovery = await discoverComponents(
-            this.client,
-            this.connectionConfig(),
-            parseComponentTable(this.config.componentTable),
-        );
-        this.componentIds = discovery.ids;
+        this.componentIds = enabledIdsByType(parseComponentTable(this.config.componentTable));
         this.log.info(
-            `Discovery via ${discovery.source}: ${COMPONENT_TYPES.map(type => `${type}=${discovery.ids[type].length}`).join(', ')}`,
+            `Enabled components: ${COMPONENT_TYPES.map(type => `${type}=${this.componentIds[type].length}`).join(', ')}`,
         );
-        if (discovery.source === 'manual' && COMPONENT_TYPES.every(type => discovery.ids[type].length === 0)) {
-            this.log.warn(
-                'list_components is not available on this openWB core (needs openWB/core PR #3981 or later) ' +
-                    'and the component table is empty - nothing will be polled. ' +
-                    'Open the instance settings\' "Components" tab to probe for devices or add IDs by hand.',
-            );
-        }
-        await this.createComponentObjects(discovery.ids);
+        await this.createComponentObjects(this.componentIds);
 
         this.subscribeStates('*.control.*');
         this.subscribeStates('io.*.digital.*');
         this.subscribeStates('io.*.analog.*');
 
-        await this.poll();
+        this.mqttReader.onConnectionChange(connected => {
+            void this.setState('info.connection', connected, true);
+        });
+        this.mqttReader.onValue((type, id, field, value) => {
+            if (!this.componentIds[type].includes(id)) {
+                return; // observed but not enabled in the component table - ignore
+            }
+            void this.setState(`${type}.${id}.${field.stateId}`, { val: value, ack: true });
+        });
+        this.mqttReader.onIoValue((id, outputType, name, value) => {
+            if (!this.componentIds.io.includes(id)) {
+                return;
+            }
+            void this.applyIoValue(id, outputType, name, value);
+        });
 
-        this.pollTimer = this.setInterval(
-            () => {
-                void this.poll();
-            },
-            this.resolveIntervalMs(this.config.pollIntervalS * 1000, DEFAULT_POLL_INTERVAL_S * 1000),
-        );
+        if (this.config.mqttHost) {
+            this.mqttReader.connect(this.mqttConnectionConfig());
+        } else {
+            this.log.warn('No MQTT broker configured - reads will not work until configured in the MQTT tab');
+        }
+
         this.discoveryTimer = this.setInterval(
             () => {
-                void this.rediscover();
+                void this.checkForNewComponents();
             },
             this.resolveIntervalMs(this.config.discoveryIntervalMin * 60_000, DEFAULT_DISCOVERY_INTERVAL_MIN * 60_000),
         );
@@ -130,6 +131,15 @@ class Openwb2 extends utils.Adapter {
         };
     }
 
+    private mqttConnectionConfig(): MqttConnectionConfig {
+        return {
+            host: this.config.mqttHost,
+            port: this.config.mqttPort,
+            username: this.config.mqttUsername,
+            password: this.config.mqttPassword,
+        };
+    }
+
     /**
      * Validates a configurable interval against Node's setTimeout/setInterval max delay
      * (2^31 - 1 ms) - an out-of-range or invalid value would otherwise produce unpredictable
@@ -140,11 +150,6 @@ class Openwb2 extends utils.Adapter {
      */
     private resolveIntervalMs(raw: number, fallback: number): number {
         return Number.isFinite(raw) && raw > 0 && raw <= MAX_TIMER_MS ? raw : fallback;
-    }
-
-    private resolvePollConcurrency(): number {
-        const n = Number(this.config.pollConcurrency);
-        return Number.isFinite(n) && n > 0 ? n : DEFAULT_POLL_CONCURRENCY;
     }
 
     /** Global (not per-instance) control states - bat_mode/bat_power_reserve take no id, see project memory. */
@@ -183,7 +188,7 @@ class Openwb2 extends utils.Adapter {
         });
 
         if (type === 'io') {
-            // Output names aren't known until the first poll response - see routeIoGroup().
+            // Output names aren't known until the first value arrives - see applyIoValue().
             await this.setObjectNotExistsAsync(`${channelId}.digital`, {
                 type: 'channel',
                 common: { name: 'Digital outputs' },
@@ -230,41 +235,35 @@ class Openwb2 extends utils.Adapter {
     }
 
     /**
-     * Re-runs live discovery (list_components only - see discoverViaListComponents) and, if it
-     * finds component IDs not already in the persisted component table, adds them as new enabled
-     * rows and persists that (native.componentTable is the single source of truth shared with the
-     * admin UI's Components tab, see componentTable.ts). Persisting a native config change
-     * restarts the adapter instance, which then re-runs onReady and creates objects for the newly
-     * added rows - so this method doesn't create objects or touch this.componentIds itself.
+     * Checks whether MqttReader has observed any component IDs not already in the persisted
+     * component table and, if so, adds them as new enabled rows and persists that
+     * (native.componentTable is the single source of truth shared with the admin UI's Components
+     * tab, see componentTable.ts). Persisting a native config change restarts the adapter
+     * instance, which then re-runs onReady and creates objects for the newly added rows - so this
+     * method doesn't create objects or touch this.componentIds itself. No network call is
+     * involved - MqttReader already knows what it's seen from the live connection.
      *
-     * Additive only: an ID no longer reported is logged, never removed from the table, since a
-     * discovery hiccup (or a device being temporarily offline) shouldn't destroy historical
-     * states/objects without explicit confirmation - the same principle the admin UI's Components
-     * tab follows when a "Probe now" no longer reports a row.
+     * Additive only: an ID no longer observed is logged, never removed from the table, since a
+     * device being temporarily offline shouldn't destroy historical states/objects without
+     * explicit confirmation - the same principle the admin UI's Components tab follows.
      */
-    private async rediscover(): Promise<void> {
+    private async checkForNewComponents(): Promise<void> {
         try {
-            const discovered = await discoverViaListComponents(this.client, this.connectionConfig());
-            if (!discovered) {
-                this.log.debug(
-                    'list_components not available - skipping automatic rediscovery (add IDs manually in the Components tab instead)',
-                );
-                return;
-            }
-
             const currentRows = parseComponentTable(this.config.componentTable);
+            const observed = this.mqttReader.getObservedIds();
+
             const removed = COMPONENT_TYPES.flatMap(type =>
                 currentRows
-                    .filter(row => row.type === type && row.enabled && !discovered[type].includes(row.id))
+                    .filter(row => row.type === type && row.enabled && !observed[type].includes(row.id))
                     .map(row => `${row.type}.${row.id}`),
             );
             if (removed.length > 0) {
                 this.log.warn(
-                    `Components no longer reported by discovery (not removed automatically): ${removed.join(', ')}`,
+                    `Components no longer observed via MQTT (not removed automatically): ${removed.join(', ')}`,
                 );
             }
 
-            const { rows, added } = mergeDiscovered(currentRows, discovered);
+            const { rows, added } = mergeDiscovered(currentRows, observed);
             if (added.length === 0) {
                 return;
             }
@@ -276,96 +275,18 @@ class Openwb2 extends utils.Adapter {
                 native: { componentTable: serializeComponentTable(rows) },
             });
         } catch (err) {
-            this.log.warn(`Rediscovery failed: ${(err as Error).message}`);
+            this.log.warn(`Component check failed: ${(err as Error).message}`);
         }
     }
 
     /**
-     * Read-only live discovery probe for the admin UI's "Probe now" button (Components tab). Does
-     * not touch the persisted component table or adapter state - the React UI merges the result
-     * into its own (unsaved) local table state, so the user can review/edit before Save.
+     * Read-only snapshot for the admin UI's "Probe now" button (Components tab) - just
+     * MqttReader's already-observed IDs, no network round-trip needed. Does not touch the
+     * persisted component table or adapter state - the React UI merges the result into its own
+     * (unsaved) local table state, so the user can review/edit before Save.
      */
-    private async probeComponents(): Promise<SimpleApiResult<ComponentIds>> {
-        const discovered = await discoverViaListComponents(this.client, this.connectionConfig());
-        if (!discovered) {
-            return { ok: false, error: 'list_components is not available on this openWB core' };
-        }
-        return { ok: true, data: discovered };
-    }
-
-    /**
-     * Runs one poll cycle: builds the batched request plan, executes it with bounded
-     * concurrency, and routes each successful response into state updates.
-     */
-    private async poll(): Promise<void> {
-        if (this.polling) {
-            return; // previous cycle still running (e.g. a slow/unreachable device) - skip this tick
-        }
-        this.polling = true;
-
-        try {
-            const plan = buildPollPlan(this.componentIds);
-            if (plan.length === 0) {
-                this.log.debug('No components discovered/configured - nothing to poll');
-                return;
-            }
-
-            const cfg = this.connectionConfig();
-            const tasks = plan.map((request: PollRequest) => async () => ({
-                request,
-                result: await this.client.read(cfg, request.params),
-            }));
-            const outcomes = await runWithConcurrency(tasks, this.resolvePollConcurrency());
-
-            let successCount = 0;
-            const errors: string[] = [];
-            for (const { request, result } of outcomes) {
-                if (result.ok) {
-                    successCount++;
-                    this.routePollResponse(request.components, result.data);
-                } else {
-                    errors.push(result.error);
-                }
-            }
-
-            await this.setState('info.connection', successCount > 0, true);
-            if (errors.length > 0) {
-                this.log.warn(`${errors.length}/${plan.length} poll requests failed, e.g.: ${errors[0]}`);
-            }
-        } catch (err) {
-            this.log.error(`Poll cycle failed: ${(err as Error).message}`);
-            await this.setState('info.connection', false, true);
-        } finally {
-            this.polling = false;
-        }
-    }
-
-    private routePollResponse(components: { type: ComponentType; id: number }[], data: Record<string, unknown>): void {
-        for (const { type, id } of components) {
-            const key = `${RESPONSE_KEY_PREFIX[type]}_${id}`;
-            const raw = data[key];
-            if (!raw || typeof raw !== 'object') {
-                continue;
-            }
-            const component = raw as Record<string, unknown>;
-
-            if (type === 'io') {
-                void this.routeIoResponse(id, component);
-                continue;
-            }
-
-            for (const field of READ_FIELDS_BY_TYPE[type] ?? []) {
-                void this.setState(`${type}.${id}.${field.stateId}`, {
-                    val: extractReadValue(component, field),
-                    ack: true,
-                });
-            }
-        }
-    }
-
-    private async routeIoResponse(id: number, component: Record<string, unknown>): Promise<void> {
-        await this.routeIoGroup(id, 'digital_output', 'digital', component.digital_output, 'boolean');
-        await this.routeIoGroup(id, 'analog_output', 'analog', component.analog_output, 'number');
+    private probeComponents(): SimpleApiResult<ComponentIds> {
+        return { ok: true, data: this.mqttReader.getObservedIds() };
     }
 
     /**
@@ -373,48 +294,41 @@ class Openwb2 extends utils.Adapter {
      * their state objects are created lazily here, the first time each name is observed.
      *
      * @param id - io component instance ID
-     * @param outputType - simpleapi.php's write-side type name for this group
-     * @param folder - state id folder ("digital" | "analog")
-     * @param raw - the digital_output/analog_output map from the response
-     * @param valueType - ioBroker state type for this group's values
+     * @param outputType - simpleapi.php's write-side type name for this output
+     * @param name - output name, as published by openWB
+     * @param value - current value
      */
-    private async routeIoGroup(
+    private async applyIoValue(
         id: number,
         outputType: 'digital_output' | 'analog_output',
-        folder: 'digital' | 'analog',
-        raw: unknown,
-        valueType: 'boolean' | 'number',
+        name: string,
+        value: ioBroker.StateValue,
     ): Promise<void> {
-        if (!raw || typeof raw !== 'object') {
-            return;
+        const folder = outputType === 'digital_output' ? 'digital' : 'analog';
+        const stateId = `io.${id}.${folder}.${name}`;
+
+        if (!this.knownIoStates.has(stateId)) {
+            await this.setObjectNotExistsAsync(stateId, {
+                type: 'state',
+                common: {
+                    name,
+                    type: outputType === 'digital_output' ? 'boolean' : 'number',
+                    role: outputType === 'digital_output' ? 'switch' : 'level',
+                    read: true,
+                    write: true,
+                },
+                native: {},
+            });
+            this.controlBindings.set(stateId, {
+                writeParam: 'set_io_output',
+                idParam: 'io_nr',
+                componentId: id,
+                io: { outputName: name, outputType },
+            });
+            this.knownIoStates.add(stateId);
         }
 
-        for (const [outputName, rawValue] of Object.entries(raw as Record<string, unknown>)) {
-            const stateId = `io.${id}.${folder}.${outputName}`;
-            if (!this.knownIoStates.has(stateId)) {
-                await this.setObjectNotExistsAsync(stateId, {
-                    type: 'state',
-                    common: {
-                        name: outputName,
-                        type: valueType,
-                        role: valueType === 'boolean' ? 'switch' : 'level',
-                        read: true,
-                        write: true,
-                    },
-                    native: {},
-                });
-                this.controlBindings.set(stateId, {
-                    writeParam: 'set_io_output',
-                    idParam: 'io_nr',
-                    componentId: id,
-                    io: { outputName, outputType },
-                });
-                this.knownIoStates.add(stateId);
-            }
-
-            const val = valueType === 'boolean' ? Boolean(rawValue) : Number(rawValue) || 0;
-            await this.setState(stateId, { val, ack: true });
-        }
+        await this.setState(stateId, { val: value, ack: true });
     }
 
     /**
@@ -468,8 +382,8 @@ class Openwb2 extends utils.Adapter {
 
     /**
      * Some message was sent to this instance over the message box - used by the admin UI's
-     * "Test connection" (Connection tab), "Rediscover now" (Polling tab), and "Probe now"
-     * (Components tab) buttons.
+     * "Test connection" (Connection tab), "Check now" (MQTT tab), and "Probe now" (Components
+     * tab) buttons.
      *
      * @param obj - incoming message
      */
@@ -479,19 +393,17 @@ class Openwb2 extends utils.Adapter {
             return;
         }
         if (obj.command === 'rediscoverNow') {
-            void this.rediscover().then(() => {
+            void this.checkForNewComponents().then(() => {
                 if (obj.callback) {
-                    this.sendTo(obj.from, obj.command, { result: 'Rediscovery complete' }, obj.callback);
+                    this.sendTo(obj.from, obj.command, { result: 'Check complete' }, obj.callback);
                 }
             });
             return;
         }
         if (obj.command === 'probeComponents') {
-            void this.probeComponents().then(result => {
-                if (obj.callback) {
-                    this.sendTo(obj.from, obj.command, result, obj.callback);
-                }
-            });
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, this.probeComponents(), obj.callback);
+            }
         }
     }
 
@@ -512,12 +424,10 @@ class Openwb2 extends utils.Adapter {
      */
     private onUnload(callback: () => void): void {
         try {
-            if (this.pollTimer) {
-                this.clearInterval(this.pollTimer);
-            }
             if (this.discoveryTimer) {
                 this.clearInterval(this.discoveryTimer);
             }
+            this.mqttReader?.disconnect();
             callback();
         } catch (error) {
             this.log.error(`Error during unloading: ${(error as Error).message}`);

@@ -12,8 +12,12 @@ export default [
             '*.test.js',
             'test/**/*.js',
             '*.config.mjs',
-            'build',
-            'dist',
+            // Bare 'build'/'dist' only match a top-level directory with flat-config's glob
+            // semantics (unlike .gitignore) - without the **/ prefix this silently misses
+            // admin/build/, whose minified bundle then hangs typescript-eslint/prettier for
+            // several CPU-minutes if a full `npm run lint` is ever run after `npm run build`.
+            '**/build/**',
+            '**/dist/**',
             'admin/words.js',
             'admin/admin.d.ts',
             'admin/blockly.js',

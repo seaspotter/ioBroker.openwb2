@@ -8,10 +8,10 @@ import type { GenericAppProps, GenericAppSettings } from '@iobroker/adapter-reac
 import I18n from '@iobroker/adapter-react/i18n';
 
 import ConnectionTab from './components/ConnectionTab';
-import PollingTab from './components/PollingTab';
+import MqttTab from './components/MqttTab';
 import ComponentsTab from './components/ComponentsTab';
 
-/** Admin settings UI: Connection/Polling/Components tabs over the instance's native config. */
+/** Admin settings UI: Connection/MQTT/Components tabs over the instance's native config. */
 class App extends GenericApp {
     // plain field + forceUpdate rather than React state: GenericApp's setState() type is fixed to
     // its own GenericAppState by the base class, so a locally-added state field can't flow through
@@ -22,7 +22,7 @@ class App extends GenericApp {
     constructor(props: GenericAppProps) {
         const extendedProps: GenericAppSettings = {
             ...props,
-            encryptedFields: ['password'],
+            encryptedFields: ['token', 'password', 'mqttPassword'],
             translations: { en: {} },
         };
         super(props, extendedProps);
@@ -58,7 +58,7 @@ class App extends GenericApp {
                         variant="scrollable"
                     >
                         <Tab label={I18n.t('Connection')} />
-                        <Tab label={I18n.t('Polling')} />
+                        <Tab label={I18n.t('MQTT')} />
                         <Tab label={I18n.t('Components')} />
                     </Tabs>
                 </AppBar>
@@ -74,7 +74,7 @@ class App extends GenericApp {
                         />
                     )}
                     {this.tab === 1 && (
-                        <PollingTab
+                        <MqttTab
                             native={this.state.native}
                             onChange={onNativeChange}
                             socket={this.socket}
