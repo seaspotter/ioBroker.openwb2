@@ -46,54 +46,75 @@ IO is the one exception - `openWB/simpleAPI/#` doesn't mirror it at all, so IO r
 
 ### Configuration
 
-The admin UI has three tabs:
+The admin UI has two tabs:
 
-- **Connection** - the HTTP side, used only for writes and the **Test connection** button:
-  protocol/host/port, the path to `simpleapi.php` (defaults to `/openWB/simpleAPI/simpleapi.php`),
-  authentication (none / bearer token / username+password), request timeout.
-- **MQTT** - the broker connection that drives all reads: host/port/username/password, the interval for
-  automatically checking for newly-observed component IDs, and a **Check now** button.
+- **Connection** - one shared **Host / IP address** field drives both the HTTP side (writes, and the
+  **Test connection** button) and the MQTT side (reads) - verified against real setups, it's always the
+  same device. The path to `simpleapi.php` is fixed (`/openWB/simpleAPI/simpleapi.php`) and not
+  configurable, since it never changes. **Test connection** checks both halves in one go and reports each
+  separately. An **Advanced** section holds everything most installs never touch: HTTP/MQTT ports, request
+  timeout, HTTP authentication (none / bearer token / username+password) and MQTT username/password -
+  openWB has no user interface to set any of this up, so it only matters if you've edited openWB's own
+  config files by hand.
 - **Components** - the component discovery table. Press **Probe now** to see what the live MQTT connection
   has already observed; newly found chargepoints/counters/batteries/PV/consumers/IO modules are added as
-  new, enabled rows without touching any row you've already edited. Untick or remove a row you don't want
-  active. A row no longer observed is flagged, not deleted, in case the device is just temporarily offline.
-  You can also add an ID by hand. The background check (MQTT tab) uses the same "add, never remove" logic
-  automatically, so a new device you plug in gets picked up without a config-screen visit; the adapter
-  instance restarts when it does (any native-config change restarts an ioBroker adapter instance).
+  new rows, **disabled by default** - ticking a row's checkbox (and Save) is what actually creates its
+  objects and starts tracking it, discovery only ever proposes, never activates automatically. Give a row a
+  **Name** if you want more than its raw ID in the object tree - openWB only reports a configured name over
+  MQTT for chargepoints, so counters/batteries/PV/IO need a manual name. Untick or remove a row you don't
+  want active; a row no longer observed is flagged, not deleted, in case the device is just temporarily
+  offline. You can also add an ID by hand. The **new-device check interval** repeats the same "add,
+  disabled" discovery in the background (`0` turns it off, default 24h) so a new device you plug in shows
+  up in the table without a config-screen visit; **Check now** runs it immediately. Either way, the adapter
+  instance restarts whenever the table actually changes (any native-config change restarts an ioBroker
+  adapter instance) - newly added-but-disabled rows don't change what the running adapter does until you
+  enable them.
 
 ### Object structure
 
 ```
 openwb2.0.info.connection                  boolean, true while connected to the MQTT broker
 openwb2.0.chargepoint.<id>.<field>          read-only: power, voltages/currents/powers per phase, soc,
-                                             state_str, plug_state, charge_state, rfid, ...
+                                             state_str, plug_state, charge_state, rfid, configName, ...
 openwb2.0.chargepoint.<id>.control.<field>  writable: chargemode, chargecurrent, chargepointLock,
                                              minimalPvSoc, minimalPermanentCurrent, maxPriceEco,
-                                             instantChargingLimit/Amount/Soc, vehicle, manualSoc
+                                             instantChargingLimit/Amount/Soc, vehicle
 openwb2.0.counter.<id>.<field>              read-only
 openwb2.0.battery.<id>.<field>              read-only
+openwb2.0.battery.<id>.control.batMode           writable enum: min_soc_bat_mode / ev_mode / bat_mode
+openwb2.0.battery.<id>.control.batPowerReserve   writable number, W
 openwb2.0.pv.<id>.<field>                   read-only
 openwb2.0.consumer.<id>.<field>             read-only (needs PR #3981 upstream)
 openwb2.0.io.<id>.digital.<name>            writable boolean, <name> comes from your io module config
 openwb2.0.io.<id>.analog.<name>             writable number, <name> comes from your io module config
-openwb2.0.general.control.batMode           writable enum: min_soc_bat_mode / ev_mode / bat_mode
-openwb2.0.general.control.batPowerReserve   writable number, W
 ```
 
 Read-only values and writable controls are split into separate channels (`chargepoint.<id>.*` vs.
 `chargepoint.<id>.control.*`) so the writable surface is easy to enumerate and doesn't get mixed up with
-mirrored read-only values that happen to represent the same underlying setting.
+mirrored read-only values that happen to represent the same underlying setting. `batMode`/`batPowerReserve`
+live under each enabled battery instance's own `control` channel for the same layout consistency, even
+though openWB treats them as one global setting rather than per-battery (writing via one battery's control
+affects the same underlying setting a second battery's control would show).
+
+All cumulative energy fields (`imported`, `exported`, and their `daily_`/`monthly_`/`yearly_` variants) are
+in **Wh**, matching what's actually on the wire - not kWh.
+
+Most chargepoint control states also show the real, device-confirmed current value (not just an echo of
+what you last wrote) - populated at startup and refreshed shortly after any change, whether it came from
+this adapter or from openWB's own UI. `vehicle`'s current value doesn't include `manualSoc`: setting a
+manual state of charge has no equivalent to read back over MQTT, so that one control was removed rather
+than left silently stuck at null.
 
 ### Known limitations
 
-- Component discovery only ever adds rows; nothing is ever deleted automatically. Remove stale entries
-  yourself in the Components tab.
+- Component discovery only ever adds rows, and always disabled - it never activates or deletes anything on
+  its own. Tick a row's checkbox yourself (and Save) once you've confirmed it's the device you expect.
 - IO output *names* are read from the device (they're user-defined in openWB's own io module config), so
   `io.<id>.digital.*`/`io.<id>.analog.*` objects only appear after the adapter has received at least one
   message for that IO module.
-- A handful of read-only chargepoint fields (`configName`, `chargeTemplateName`, `minCurrent`,
-  `instantChargingCurrent`, `pvChargingMinCurrent`) have no confirmed MQTT equivalent yet and simply won't
-  update - they're minor settings mirrors, not anything the write path depends on.
+- A handful of read-only chargepoint fields (`chargeTemplateName`, `minCurrent`, `instantChargingCurrent`,
+  `pvChargingMinCurrent`) have no confirmed MQTT equivalent yet and simply won't update - they're minor
+  settings mirrors, not anything the write path depends on.
 - The MQTT broker connection currently has no TLS option in the admin UI - only plain `mqtt://`.
 
 ## Developer manual
@@ -134,6 +155,21 @@ released into the ioBroker repository, see
 * (SeaSpotter) Reads now come from a live MQTT connection (`openWB/simpleAPI/#` plus the raw IO
   namespace) instead of HTTP polling - lower latency, and reliable component discovery. Writes
   are unchanged (still HTTP). See the README's "Why MQTT for reads, HTTP for writes" section.
+* (SeaSpotter) Migrated the admin UI to `@iobroker/adapter-react-v5`/MUI 6 (the previous
+  `@iobroker/adapter-react` was incompatible with current ioBroker Admin and showed a blank
+  settings page) and merged the Connection/MQTT tabs into one, with a shared host field and a
+  combined "Test connection" button.
+* (SeaSpotter) Fixed a missing `"messagebox": true` in `io-package.json` that silently broke
+  "Test connection" and "Probe now".
+* (SeaSpotter) Fixed the connection test's HTTP check timing out against real devices (was probing
+  a chargepoint ID that may not exist; now uses `get_lastlivevaluesjson`).
+* (SeaSpotter) Fixed all cumulative energy fields being mislabeled as kWh - they're Wh on the wire.
+* (SeaSpotter) Most chargepoint control states now show their real, device-confirmed value instead
+  of staying `null` until written. Removed `manualSoc` (no MQTT confirmation is possible for it).
+  Moved `batMode`/`batPowerReserve` under each battery instance's own control channel.
+* (SeaSpotter) Newly discovered components are added disabled, not enabled, so probing never
+  silently activates a device you haven't reviewed. Added a per-row Name column for components
+  other than chargepoints (openWB doesn't report a name for those over MQTT).
 
 ### 0.0.1 (2026-09-21)
 * (SeaSpotter) initial release
