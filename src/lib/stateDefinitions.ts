@@ -196,6 +196,26 @@ export const CHARGEPOINT_READ_FIELDS: ReadFieldDef[] = [
         '%',
         'instant_charging_limit_soc',
     ),
+    str('pv_charging_limit', 'pvChargingLimit', 'PV charging limit type'),
+    // Flat mirror calls this "pv_charging_limit_amount", not "pv_charging_amount" - same naming
+    // pattern as instant_charging_amount above.
+    num(
+        'pv_charging_amount',
+        'pvChargingAmount',
+        'PV charging amount limit',
+        'value.energy',
+        'kWh',
+        'pv_charging_limit_amount',
+    ),
+    // Flat mirror calls this "pv_charging_limit_soc", not "pv_charging_soc".
+    num(
+        'pv_charging_soc',
+        'pvChargingSoc',
+        'PV charging SoC limit',
+        'value.battery',
+        '%',
+        'pv_charging_limit_soc',
+    ),
     // Note: HTTP's max_price_eco is scaled x100000 for legacy reasons (see ParameterHandler.php);
     // the MQTT value is the real, unscaled price. This read-only mirror intentionally shows the
     // unscaled MQTT value - only the HTTP write side (chargepoint.<id>.control.maxPriceEco) uses
@@ -310,6 +330,36 @@ export const CHARGEPOINT_CONTROL_FIELDS: WriteFieldDef[] = [
         max: 100,
     },
     {
+        stateId: 'pvChargingLimit',
+        name: 'PV charging limit type',
+        type: 'string',
+        role: 'state',
+        writeParam: 'pv_charging_limit',
+        idParam: 'chargepoint_nr',
+        states: { none: 'none', amount: 'amount', soc: 'soc' },
+    },
+    {
+        stateId: 'pvChargingAmount',
+        name: 'PV charging amount limit',
+        type: 'number',
+        role: 'level.energy',
+        unit: 'kWh',
+        writeParam: 'pv_charging_amount',
+        idParam: 'chargepoint_nr',
+        min: 0,
+    },
+    {
+        stateId: 'pvChargingSoc',
+        name: 'PV charging SoC limit',
+        type: 'number',
+        role: 'level.battery',
+        unit: '%',
+        writeParam: 'pv_charging_soc',
+        idParam: 'chargepoint_nr',
+        min: 0,
+        max: 100,
+    },
+    {
         stateId: 'vehicle',
         name: 'Assigned vehicle ID',
         type: 'number',
@@ -394,6 +444,24 @@ export const CHARGEPOINT_CONTROL_LIVE_FIELDS: ControlLiveSource[] = [
         mqttField: 'set/charge_template/chargemode/instant_charging/limit/soc',
         type: 'number',
     },
+    {
+        controlStateId: 'pvChargingLimit',
+        mqttField: 'set/charge_template/chargemode/pv_charging/limit/selected',
+        type: 'string',
+    },
+    {
+        // setPvChargingAmount converts kWh -> Wh before writing; convert back for display, same as
+        // instantChargingAmount above.
+        controlStateId: 'pvChargingAmount',
+        mqttField: 'set/charge_template/chargemode/pv_charging/limit/amount',
+        type: 'number',
+        fromMqtt: value => Number(value) / 1000,
+    },
+    {
+        controlStateId: 'pvChargingSoc',
+        mqttField: 'set/charge_template/chargemode/pv_charging/limit/soc',
+        type: 'number',
+    },
     // setVehicle writes config.ev - not the same field as the read-only vehicle_id (that's the
     // chargepoint's own currently-detected vehicle, a different concept - confirmed live: vehicle_id
     // was null while config/ev was 1 on the same real chargepoint).
@@ -446,10 +514,9 @@ export const PV_READ_FIELDS: ReadFieldDef[] = [
 ];
 
 /*
- * Not live-verified - no consumer module was configured on the test device (consumer support
- * needs openWB/core PR #3981 or later, see project memory). mqttField values below are inferred
- * from the same nested `get/<field>` mirroring pattern confirmed for counter/battery/pv, plus the
- * PHP source's own topic layout for usage_type specifically (read from a separate
+ * Not live-verified - no consumer module was configured on the test device. mqttField values below
+ * are inferred from the same nested `get/<field>` mirroring pattern confirmed for counter/battery/pv,
+ * plus the PHP source's own topic layout for usage_type specifically (read from a separate
  * `openWB/consumer/<id>/usage` JSON object, not a `get/usage_type` topic - the daemon's generic
  * flattening would turn that into `usage/type`). Worth re-confirming against a real consumer
  * module before relying on this table.

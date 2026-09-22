@@ -32,7 +32,7 @@
     "Protocol": "Protocolo",
     "Remove": "Remover",
     "Request timeout (ms)": "Tempo limite da solicitação (ms)",
-    "Shows what the live MQTT connection has already seen. Consumer support needs openWB/core PR #3981 or later; everything else works on any core. If nothing shows up yet, add an ID manually below.": "Mostra o que a conexão MQTT ao vivo já viu. O suporte ao consumidor precisa de openWB/core PR #3981 ou posterior; todo o resto funciona em qualquer núcleo. Se nada aparecer ainda, adicione um ID manualmente abaixo.",
+    "Shows what the live MQTT connection has already seen. If nothing shows up yet, add an ID manually below.": "Mostra o que a conexão MQTT ao vivo já viu. Se nada aparecer ainda, adicione um ID manualmente abaixo.",
     "Status": "Status",
     "Test connection": "Conexão de teste",
     "Type": "Tipo",

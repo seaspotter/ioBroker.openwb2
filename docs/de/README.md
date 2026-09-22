@@ -10,9 +10,9 @@ Stromgrenzen, Sofortladen-Ziele, Ladepunkt-Sperre, Batteriemodus, IO-Ausgänge, 
 
 > **Hinweis:** Dies ist ein unabhängiger, von der Community gepflegter Adapter. Er steht in keiner
 > Verbindung zur openWB GmbH & Co. KG und wird nicht von ihr unterstützt. "openWB" ist eine Marke des
-> jeweiligen Inhabers; das Adapter-Icon ist ein eigenständiges Design (ein Stecker mit fließendem
-> Kabel als generisches E-Auto-Lade-Motiv) und keine Nachbildung oder Ableitung des openWB-eigenen
-> Logos.
+> jeweiligen Inhabers; das Adapter-Icon ist ein eigenständiges Design (ein Haus, eine Wallbox und ein
+> Auto, verbunden durch ein Ladekabel, als generisches Heim-Lade-Motiv) und keine Nachbildung oder
+> Ableitung des openWB-eigenen Logos.
 
 ### Warum MQTT zum Lesen, HTTP zum Schreiben
 
@@ -37,8 +37,6 @@ IO-Lesepfad stattdessen direkt den rohen `openWB/io/states/+/get/#`-Namespace.
 
 - openWB 2.x mit aktivierter `simpleAPI` und einem MQTT-Broker, der vom ioBroker-Host aus erreichbar
   ist (in der Regel bedient dasselbe Gerät sowohl den Broker als auch die HTTP-Schnittstelle).
-- Verbraucher-Unterstützung ("consumer") benötigt konkret [PR #3981](https://github.com/openWB/core/pull/3981)
-  oder neuer im openWB-Kern - Ladepunkt/Zähler/Batterie/PV funktionieren mit jedem aktuellen Kern.
 
 ### Konfiguration
 
@@ -65,11 +63,10 @@ Die Admin-Oberfläche hat zwei Reiter:
   gelöscht, falls das Gerät nur vorübergehend offline ist. Eine ID kann auch von Hand hinzugefügt
   werden. Das Intervall **New-device check interval** wiederholt dieselbe "hinzufügen, aber
   deaktiviert"-Erkennung im Hintergrund (`0` schaltet es ab, Standard 24h), sodass ein neu
-  angeschlossenes Gerät ohne Besuch der Konfigurationsseite in der Tabelle erscheint; **Check now**
-  führt das sofort aus. In beiden Fällen startet die Adapterinstanz neu, sobald sich die Tabelle
-  tatsächlich ändert (jede Änderung an der nativen Konfiguration startet eine ioBroker-Adapterinstanz
-  neu) - neu hinzugefügte, aber deaktivierte Zeilen ändern am Verhalten des laufenden Adapters
-  nichts, bis sie aktiviert werden.
+  angeschlossenes Gerät ohne Besuch der Konfigurationsseite in der Tabelle erscheint. In beiden
+  Fällen startet die Adapterinstanz neu, sobald sich die Tabelle tatsächlich ändert (jede Änderung an
+  der nativen Konfiguration startet eine ioBroker-Adapterinstanz neu) - neu hinzugefügte, aber
+  deaktivierte Zeilen ändern am Verhalten des laufenden Adapters nichts, bis sie aktiviert werden.
 
 ### Objektstruktur
 
@@ -80,13 +77,14 @@ openwb2.0.chargepoint.<id>.<field>          nur lesbar: power, voltages/currents
                                              configName, ...
 openwb2.0.chargepoint.<id>.control.<field>  schreibbar: chargemode, chargecurrent, chargepointLock,
                                              minimalPvSoc, minimalPermanentCurrent, maxPriceEco,
-                                             instantChargingLimit/Amount/Soc, vehicle
+                                             instantChargingLimit/Amount/Soc,
+                                             pvChargingLimit/Amount/Soc, vehicle
 openwb2.0.counter.<id>.<field>              nur lesbar
 openwb2.0.battery.<id>.<field>              nur lesbar
 openwb2.0.battery.<id>.control.batMode           schreibbar, enum: min_soc_bat_mode / ev_mode / bat_mode
 openwb2.0.battery.<id>.control.batPowerReserve   schreibbar, Zahl, W
 openwb2.0.pv.<id>.<field>                   nur lesbar
-openwb2.0.consumer.<id>.<field>             nur lesbar (benötigt PR #3981 im openWB-Kern)
+openwb2.0.consumer.<id>.<field>             nur lesbar
 openwb2.0.io.<id>.digital.<name>            schreibbar, boolean - <name> stammt aus der IO-Modul-Konfiguration
 openwb2.0.io.<id>.analog.<name>             schreibbar, Zahl - <name> stammt aus der IO-Modul-Konfiguration
 ```

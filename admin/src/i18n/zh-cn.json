@@ -32,7 +32,7 @@
     "Protocol": "协议",
     "Remove": "消除",
     "Request timeout (ms)": "请求超时（毫秒）",
-    "Shows what the live MQTT connection has already seen. Consumer support needs openWB/core PR #3981 or later; everything else works on any core. If nothing shows up yet, add an ID manually below.": "显示实时 MQTT 连接已经看到的内容。消费者支持需要 openWB/core PR #3981 或更高版本；其他一切都可以在任何核心上运行。如果尚未显示任何内容，请在下面手动添加 ID。",
+    "Shows what the live MQTT connection has already seen. If nothing shows up yet, add an ID manually below.": "显示实时 MQTT 连接已经看到的内容。如果尚未显示任何内容，请在下面手动添加 ID。",
     "Status": "地位",
     "Test connection": "测试连接",
     "Type": "类型",

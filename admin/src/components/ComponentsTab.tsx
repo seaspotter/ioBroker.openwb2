@@ -112,13 +112,6 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
         this.setState({ addId: '' });
     };
 
-    private checkNow = async (): Promise<void> => {
-        await this.props.socket.sendTo(this.props.instanceId, 'rediscoverNow', {});
-        this.props.onToast(
-            I18n.t('Check triggered - check the log, the instance restarts if new components were found'),
-        );
-    };
-
     /**
      * @param row - table row to check against the last probe's result
      * @returns true/false if a probe has run this session and did/didn't report this row, undefined if no probe has run yet
@@ -147,7 +140,7 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                     </Button>
                     <span style={{ marginLeft: 16, opacity: 0.7 }}>
                         {I18n.t(
-                            'Shows what the live MQTT connection has already seen. Consumer support needs openWB/core PR #3981 or later; everything else works on any core. If nothing shows up yet, add an ID manually below.',
+                            'Shows what the live MQTT connection has already seen. If nothing shows up yet, add an ID manually below.',
                         )}
                     </span>
                 </div>
@@ -252,25 +245,17 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                 </div>
 
                 <div style={{ marginTop: 32, borderTop: '1px solid #E2E5EA', paddingTop: 16 }}>
-                    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
-                        <TextField
-                            label={I18n.t('New-device check interval (minutes)')}
-                            helperText={I18n.t(
-                                'How often the adapter checks whether MQTT has revealed component IDs not yet in this table - 0 disables the automatic check',
-                            )}
-                            type="number"
-                            style={{ minWidth: 300 }}
-                            value={asNumber(this.props.native.discoveryIntervalMin, 1440)}
-                            onChange={e => this.props.onChange('discoveryIntervalMin', Number(e.target.value))}
-                            margin="normal"
-                        />
-                        <Button
-                            variant="outlined"
-                            onClick={() => void this.checkNow()}
-                        >
-                            {I18n.t('Check now')}
-                        </Button>
-                    </div>
+                    <TextField
+                        label={I18n.t('New-device check interval (minutes)')}
+                        helperText={I18n.t(
+                            'How often the adapter checks whether MQTT has revealed component IDs not yet in this table - 0 disables the automatic check',
+                        )}
+                        type="number"
+                        style={{ minWidth: 300 }}
+                        value={asNumber(this.props.native.discoveryIntervalMin, 1440)}
+                        onChange={e => this.props.onChange('discoveryIntervalMin', Number(e.target.value))}
+                        margin="normal"
+                    />
                 </div>
             </div>
         );

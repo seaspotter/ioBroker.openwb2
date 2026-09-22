@@ -18,8 +18,8 @@ targets, chargepoint lock, battery mode, IO outputs, ...) via its `simpleAPI` HT
 
 > **Disclaimer:** this is an independent, community-maintained adapter. It is not affiliated with, endorsed
 > by, or supported by openWB GmbH & Co. KG. "openWB" is a trademark of its respective owner; the adapter
-> icon is an original design (a plug with a flowing cable, a generic EV-charging motif) and not a
-> reproduction of, or derived from, openWB's own logo.
+> icon is an original design (a house, wallbox and car connected by a charging cable, a generic
+> home-charging motif) and not a reproduction of, or derived from, openWB's own logo.
 
 ### Why MQTT for reads, HTTP for writes
 
@@ -41,8 +41,6 @@ IO is the one exception - `openWB/simpleAPI/#` doesn't mirror it at all, so IO r
 
 - openWB 2.x with `simpleAPI` enabled and its MQTT broker reachable from your ioBroker host (the same
   device usually serves both the broker and the HTTP interface).
-- Consumer support specifically needs [PR #3981](https://github.com/openWB/core/pull/3981) or later merged
-  upstream - chargepoint/counter/battery/PV work on any current core.
 
 ### Configuration
 
@@ -65,10 +63,9 @@ The admin UI has two tabs:
   want active; a row no longer observed is flagged, not deleted, in case the device is just temporarily
   offline. You can also add an ID by hand. The **new-device check interval** repeats the same "add,
   disabled" discovery in the background (`0` turns it off, default 24h) so a new device you plug in shows
-  up in the table without a config-screen visit; **Check now** runs it immediately. Either way, the adapter
-  instance restarts whenever the table actually changes (any native-config change restarts an ioBroker
-  adapter instance) - newly added-but-disabled rows don't change what the running adapter does until you
-  enable them.
+  up in the table without a config-screen visit. Either way, the adapter instance restarts whenever the
+  table actually changes (any native-config change restarts an ioBroker adapter instance) - newly
+  added-but-disabled rows don't change what the running adapter does until you enable them.
 
 ### Object structure
 
@@ -78,13 +75,14 @@ openwb2.0.chargepoint.<id>.<field>          read-only: power, voltages/currents/
                                              state_str, plug_state, charge_state, rfid, configName, ...
 openwb2.0.chargepoint.<id>.control.<field>  writable: chargemode, chargecurrent, chargepointLock,
                                              minimalPvSoc, minimalPermanentCurrent, maxPriceEco,
-                                             instantChargingLimit/Amount/Soc, vehicle
+                                             instantChargingLimit/Amount/Soc,
+                                             pvChargingLimit/Amount/Soc, vehicle
 openwb2.0.counter.<id>.<field>              read-only
 openwb2.0.battery.<id>.<field>              read-only
 openwb2.0.battery.<id>.control.batMode           writable enum: min_soc_bat_mode / ev_mode / bat_mode
 openwb2.0.battery.<id>.control.batPowerReserve   writable number, W
 openwb2.0.pv.<id>.<field>                   read-only
-openwb2.0.consumer.<id>.<field>             read-only (needs PR #3981 upstream)
+openwb2.0.consumer.<id>.<field>             read-only
 openwb2.0.io.<id>.digital.<name>            writable boolean, <name> comes from your io module config
 openwb2.0.io.<id>.analog.<name>             writable number, <name> comes from your io module config
 ```
@@ -170,6 +168,11 @@ released into the ioBroker repository, see
 * (SeaSpotter) Newly discovered components are added disabled, not enabled, so probing never
   silently activates a device you haven't reviewed. Added a per-row Name column for components
   other than chargepoints (openWB doesn't report a name for those over MQTT).
+* (SeaSpotter) Removed the redundant "Check now" button from the Components tab - "Probe now"
+  already covers the same use case now that discovery adds rows disabled instead of active.
+* (SeaSpotter) Added PV charging limit control: `pvChargingLimit`/`pvChargingAmount`/`pvChargingSoc`
+  under each chargepoint's control channel, mirroring the existing instant-charging limit fields
+  (limit type none/amount/soc, amount in kWh, SoC in %), with the same live device-confirmed value.
 
 ### 0.0.1 (2026-09-21)
 * (SeaSpotter) initial release
