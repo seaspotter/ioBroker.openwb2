@@ -451,14 +451,6 @@ class Openwb2 extends utils.Adapter {
             void this.handleTestConnection(obj);
             return;
         }
-        if (obj.command === 'rediscoverNow') {
-            void this.checkForNewComponents().then(() => {
-                if (obj.callback) {
-                    this.sendTo(obj.from, obj.command, { result: 'Check complete' }, obj.callback);
-                }
-            });
-            return;
-        }
         if (obj.command === 'probeComponents') {
             if (obj.callback) {
                 this.sendTo(obj.from, obj.command, this.probeComponents(), obj.callback);
