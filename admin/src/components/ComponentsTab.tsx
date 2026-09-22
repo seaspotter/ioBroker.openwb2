@@ -1,17 +1,16 @@
 import React from 'react';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
-import TextField from '@material-ui/core/TextField';
-import MenuItem from '@material-ui/core/MenuItem';
-import Checkbox from '@material-ui/core/Checkbox';
-import Button from '@material-ui/core/Button';
-import IconButton from '@material-ui/core/IconButton';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Checkbox from '@mui/material/Checkbox';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 
-import I18n from '@iobroker/adapter-react/i18n';
-import type Connection from '@iobroker/adapter-react/Connection';
+import { I18n, type AdminConnection } from '@iobroker/adapter-react-v5';
 
 import { COMPONENT_TYPES, type ComponentIds, type ComponentType } from '../../../src/lib/constants';
 import {
@@ -20,11 +19,12 @@ import {
     mergeDiscovered,
     type ComponentTableRow,
 } from '../../../src/lib/componentTable';
+import { asNumber } from '../nativeUtils';
 
 export interface ComponentsTabProps {
     native: Record<string, unknown>;
     onChange: (attr: string, value: unknown) => void;
-    socket: Connection;
+    socket: AdminConnection;
     instanceId: string;
     onToast: (text: string) => void;
     onError: (text: string) => void;
@@ -87,6 +87,12 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
         this.setRows(rows);
     }
 
+    private renameRow(index: number, name: string): void {
+        const rows = [...this.rows];
+        rows[index] = { ...rows[index], name: name.trim() === '' ? undefined : name };
+        this.setRows(rows);
+    }
+
     private deleteRow(index: number): void {
         const rows = [...this.rows];
         rows.splice(index, 1);
@@ -104,6 +110,13 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
         }
         this.setRows([...this.rows, { type, id, enabled: true }]);
         this.setState({ addId: '' });
+    };
+
+    private checkNow = async (): Promise<void> => {
+        await this.props.socket.sendTo(this.props.instanceId, 'rediscoverNow', {});
+        this.props.onToast(
+            I18n.t('Check triggered - check the log, the instance restarts if new components were found'),
+        );
     };
 
     /**
@@ -138,6 +151,11 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                         )}
                     </span>
                 </div>
+                <div style={{ marginBottom: 16, opacity: 0.7, fontSize: 13 }}>
+                    {I18n.t(
+                        'openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries, PV inverters and IO modules manually below if you want more than the ID shown in the object tree.',
+                    )}
+                </div>
 
                 <Table size="small">
                     <TableHead>
@@ -145,6 +163,7 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                             <TableCell>{I18n.t('Enabled')}</TableCell>
                             <TableCell>{I18n.t('Type')}</TableCell>
                             <TableCell>{I18n.t('ID')}</TableCell>
+                            <TableCell>{I18n.t('Name')}</TableCell>
                             <TableCell>{I18n.t('Status')}</TableCell>
                             <TableCell />
                         </TableRow>
@@ -162,6 +181,15 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                                     </TableCell>
                                     <TableCell>{row.type}</TableCell>
                                     <TableCell>{row.id}</TableCell>
+                                    <TableCell>
+                                        <TextField
+                                            size="small"
+                                            variant="standard"
+                                            placeholder={`${row.type} ${row.id}`}
+                                            value={row.name ?? ''}
+                                            onChange={e => this.renameRow(index, e.target.value)}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         {reported === false
                                             ? I18n.t('not currently reported')
@@ -183,7 +211,7 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                         })}
                         {rows.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={5}>
+                                <TableCell colSpan={6}>
                                     {I18n.t('No components configured yet - probe or add one below.')}
                                 </TableCell>
                             </TableRow>
@@ -221,6 +249,28 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                     >
                         {I18n.t('Add')}
                     </Button>
+                </div>
+
+                <div style={{ marginTop: 32, borderTop: '1px solid #E2E5EA', paddingTop: 16 }}>
+                    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
+                        <TextField
+                            label={I18n.t('New-device check interval (minutes)')}
+                            helperText={I18n.t(
+                                'How often the adapter checks whether MQTT has revealed component IDs not yet in this table - 0 disables the automatic check',
+                            )}
+                            type="number"
+                            style={{ minWidth: 300 }}
+                            value={asNumber(this.props.native.discoveryIntervalMin, 1440)}
+                            onChange={e => this.props.onChange('discoveryIntervalMin', Number(e.target.value))}
+                            margin="normal"
+                        />
+                        <Button
+                            variant="outlined"
+                            onClick={() => void this.checkNow()}
+                        >
+                            {I18n.t('Check now')}
+                        </Button>
+                    </div>
                 </div>
             </div>
         );

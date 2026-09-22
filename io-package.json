@@ -31,22 +31,28 @@
             "zh-cn": "开放式WB 2"
         },
         "desc": {
-            "en": "Reads chargepoints, counters, battery, PV and consumers from an openWB 2 wallbox controller via its simpleAPI HTTP interface, and lets you control charging",
-            "de": "Liest über die simpleAPI-HTTP-Schnittstelle Ladepunkte, Zähler, Batterie, PV und Verbraucher von einem openWB 2 Wallbox-Controller aus und ermöglicht die Steuerung des Ladevorgangs",
-            "ru": "Считывает точки зарядки, счетчики, данные об аккумуляторе, фотоэлектрических элементах и ​​потребителях с контроллера настенной коробки openWB 2 через простой HTTP-интерфейс API и позволяет контролировать зарядку.",
-            "pt": "Lê pontos de carregamento, contadores, bateria, PV e consumidores de um controlador de wallbox openWB 2 por meio de sua interface HTTP simpleAPI e permite controlar o carregamento",
-            "nl": "Leest laadpunten, tellers, batterij, PV en consumenten van een openWB 2 wallbox-controller via de eenvoudige API HTTP-interface, en laat u het opladen regelen",
-            "fr": "Lit les points de charge, les compteurs, la batterie, les PV et les consommateurs à partir d'un contrôleur de boîte murale openWB 2 via son interface HTTP simpleAPI, et vous permet de contrôler la charge.",
-            "it": "Legge punti di ricarica, contatori, batteria, impianto fotovoltaico e utenze da un controller wallbox openWB 2 tramite la sua interfaccia HTTP SimpleAPI e consente di controllare la ricarica",
-            "es": "Lee puntos de carga, contadores, baterías, energía fotovoltaica y consumidores desde un controlador de caja de pared openWB 2 a través de su sencilla interfaz API HTTP y le permite controlar la carga.",
-            "pl": "Odczytuje punkty ładowania, liczniki, akumulator, fotowoltaikę i odbiorniki ze sterownika openWB 2 wallbox za pośrednictwem interfejsu HTTP simpleAPI i pozwala kontrolować ładowanie",
-            "uk": "Зчитує зарядні точки, лічильники, батарею, PV та споживачів з контролера openWB 2 wallbox через HTTP-інтерфейс SimpleAPI та дозволяє контролювати зарядку",
-            "zh-cn": "通过 openWB 2 wallbox 控制器的 simpleAPI HTTP 接口读取充电点、计数器、电池、PV 和消费者，并让您控制充电"
+            "en": "Reads chargepoints, counters, battery, PV and consumers from an openWB 2 wallbox controller live over MQTT, and lets you control charging via its simpleAPI HTTP interface",
+            "de": "Liest Ladepunkte, Zähler, Batterie, PV und Verbraucher live über MQTT von einem openWB 2 Wallbox-Controller aus und ermöglicht die Steuerung des Ladevorgangs über die simpleAPI-HTTP-Schnittstelle",
+            "ru": "Считывает точки зарядки, счетчики, аккумулятор, PV и потребителей из контроллера настенной коробки openWB 2 в реальном времени через MQTT и позволяет управлять зарядкой через простой интерфейс API HTTP.",
+            "pt": "Lê pontos de carregamento, contadores, bateria, energia fotovoltaica e consumidores de um controlador de caixa de parede openWB 2 ao vivo via MQTT e permite controlar o carregamento por meio de sua interface HTTP simpleAPI",
+            "nl": "Leest oplaadpunten, tellers, batterij, PV en consumenten van een openWB 2 wallbox-controller live via MQTT, en laat u het opladen regelen via de eenvoudige API HTTP-interface",
+            "fr": "Lit les points de charge, les compteurs, la batterie, les PV et les consommateurs à partir d'un contrôleur de boîte murale openWB 2 en direct sur MQTT et vous permet de contrôler la charge via son interface HTTP simpleAPI",
+            "it": "Legge punti di ricarica, contatori, batteria, fotovoltaico e utenze da un controller wallbox openWB 2 in tempo reale su MQTT e consente di controllare la ricarica tramite la sua semplice interfaccia HTTP API",
+            "es": "Lee puntos de carga, contadores, baterías, energía fotovoltaica y consumidores desde un controlador de caja de pared openWB 2 en vivo a través de MQTT y le permite controlar la carga a través de su sencilla interfaz API HTTP.",
+            "pl": "Odczytuje punkty ładowania, liczniki, akumulator, fotowoltaikę i odbiorniki z kontrolera openWB 2 wallbox na żywo przez MQTT i pozwala kontrolować ładowanie za pomocą interfejsu HTTP simpleAPI",
+            "uk": "Зчитує зарядні точки, лічильники, батарею, PV та споживачів з контролера openWB 2 wallbox у прямому ефірі через MQTT і дозволяє вам контролювати зарядку через простий інтерфейс API HTTP",
+            "zh-cn": "通过 MQTT 从 openWB 2 墙盒控制器实时读取充电点、计数器、电池、PV 和消费者，并让您通过其 simpleAPI HTTP 接口控制充电"
         },
         "authors": [
             "SeaSpotter <seatowage@gmail.com>"
         ],
-        "keywords": ["openwb", "ev-charging", "wallbox", "simpleapi", "pv"],
+        "keywords": [
+            "openwb",
+            "ev-charging",
+            "wallbox",
+            "simpleapi",
+            "pv"
+        ],
         "licenseInformation": {
             "type": "free",
             "license": "MIT"
@@ -63,6 +69,7 @@
         "compact": true,
         "connectionType": "local",
         "dataSource": "push",
+        "messagebox": true,
         "adminUI": {
             "config": "materialize"
         },
@@ -81,20 +88,22 @@
         "protocol": "http",
         "host": "",
         "port": 80,
-        "basePath": "/openWB/simpleAPI/simpleapi.php",
         "authMethod": "none",
         "token": "",
         "username": "",
         "password": "",
         "requestTimeoutMs": 5000,
-        "mqttHost": "",
         "mqttPort": 1883,
         "mqttUsername": "",
         "mqttPassword": "",
-        "discoveryIntervalMin": 60,
+        "discoveryIntervalMin": 1440,
         "componentTable": "[]"
     },
-    "encryptedNative": ["token", "password", "mqttPassword"],
+    "encryptedNative": [
+        "token",
+        "password",
+        "mqttPassword"
+    ],
     "objects": [],
     "instanceObjects": [
         {

@@ -1,7 +1,13 @@
 import * as utils from '@iobroker/adapter-core';
 import { SimpleApiClient, type SimpleApiConnectionConfig, type SimpleApiResult } from './lib/simpleApiClient';
-import { MqttReader, type MqttConnectionConfig } from './lib/mqttReader';
-import { parseComponentTable, serializeComponentTable, mergeDiscovered, enabledIdsByType } from './lib/componentTable';
+import { MqttReader, testMqttConnection, type MqttConnectionConfig } from './lib/mqttReader';
+import {
+    parseComponentTable,
+    serializeComponentTable,
+    mergeDiscovered,
+    enabledIdsByType,
+    type ComponentTableRow,
+} from './lib/componentTable';
 import {
     CHARGEPOINT_READ_FIELDS,
     CHARGEPOINT_CONTROL_FIELDS,
@@ -9,7 +15,7 @@ import {
     BATTERY_READ_FIELDS,
     PV_READ_FIELDS,
     CONSUMER_READ_FIELDS,
-    GENERAL_CONTROL_FIELDS,
+    BATTERY_CONTROL_FIELDS,
     commonFromReadField,
     commonFromWriteField,
     type ReadFieldDef,
@@ -70,18 +76,18 @@ class Openwb2 extends utils.Adapter {
         this.mqttReader = new MqttReader(this.log);
 
         if (!this.config.host) {
-            this.log.warn(
-                'No openWB HTTP host configured - writes and "Test connection" will not work until configured',
-            );
+            this.log.warn('No openWB host configured - nothing will work until configured in the Connection tab');
         }
 
-        await this.createGeneralControlObjects();
+        await this.removeLegacyGeneralControlObjects();
 
-        this.componentIds = enabledIdsByType(parseComponentTable(this.config.componentTable));
+        const componentRows = parseComponentTable(this.config.componentTable);
+        this.componentIds = enabledIdsByType(componentRows);
+        await this.removeLegacyManualSocObjects(this.componentIds.chargepoint);
         this.log.info(
             `Enabled components: ${COMPONENT_TYPES.map(type => `${type}=${this.componentIds[type].length}`).join(', ')}`,
         );
-        await this.createComponentObjects(this.componentIds);
+        await this.createComponentObjects(this.componentIds, componentRows);
 
         this.subscribeStates('*.control.*');
         this.subscribeStates('io.*.digital.*');
@@ -96,6 +102,15 @@ class Openwb2 extends utils.Adapter {
             }
             void this.setState(`${type}.${id}.${field.stateId}`, { val: value, ack: true });
         });
+        this.mqttReader.onControlValue((id, controlStateId, value) => {
+            if (!this.componentIds.chargepoint.includes(id)) {
+                return;
+            }
+            // Same live-updated as any read state, ack:true - this is what makes "does writing
+            // confirm the actual value" true: whether the change came from our own write or from
+            // openWB's own UI, the device republishes it and this fires again shortly after.
+            void this.setState(`chargepoint.${id}.control.${controlStateId}`, { val: value, ack: true });
+        });
         this.mqttReader.onIoValue((id, outputType, name, value) => {
             if (!this.componentIds.io.includes(id)) {
                 return;
@@ -103,18 +118,24 @@ class Openwb2 extends utils.Adapter {
             void this.applyIoValue(id, outputType, name, value);
         });
 
-        if (this.config.mqttHost) {
+        if (this.config.host) {
             this.mqttReader.connect(this.mqttConnectionConfig());
-        } else {
-            this.log.warn('No MQTT broker configured - reads will not work until configured in the MQTT tab');
         }
 
-        this.discoveryTimer = this.setInterval(
-            () => {
-                void this.checkForNewComponents();
-            },
-            this.resolveIntervalMs(this.config.discoveryIntervalMin * 60_000, DEFAULT_DISCOVERY_INTERVAL_MIN * 60_000),
-        );
+        // 0 genuinely disables the periodic check (not "invalid, fall back to default") - a user
+        // who only ever wants to discover new components via the manual "Probe now" button should
+        // be able to turn the background one off entirely.
+        if (this.config.discoveryIntervalMin !== 0) {
+            this.discoveryTimer = this.setInterval(
+                () => {
+                    void this.checkForNewComponents();
+                },
+                this.resolveIntervalMs(
+                    this.config.discoveryIntervalMin * 60_000,
+                    DEFAULT_DISCOVERY_INTERVAL_MIN * 60_000,
+                ),
+            );
+        }
     }
 
     private connectionConfig(): SimpleApiConnectionConfig {
@@ -122,7 +143,6 @@ class Openwb2 extends utils.Adapter {
             protocol: this.config.protocol,
             host: this.config.host,
             port: this.config.port,
-            basePath: this.config.basePath,
             authMethod: this.config.authMethod,
             token: this.config.token,
             username: this.config.username,
@@ -131,9 +151,10 @@ class Openwb2 extends utils.Adapter {
         };
     }
 
+    /** Shares `this.config.host` with the HTTP side - see adapter-config.d.ts's note on `host`. */
     private mqttConnectionConfig(): MqttConnectionConfig {
         return {
-            host: this.config.mqttHost,
+            host: this.config.host,
             port: this.config.mqttPort,
             username: this.config.mqttUsername,
             password: this.config.mqttPassword,
@@ -152,38 +173,50 @@ class Openwb2 extends utils.Adapter {
         return Number.isFinite(raw) && raw > 0 && raw <= MAX_TIMER_MS ? raw : fallback;
     }
 
-    /** Global (not per-instance) control states - bat_mode/bat_power_reserve take no id, see project memory. */
-    private async createGeneralControlObjects(): Promise<void> {
-        await this.setObjectNotExistsAsync('general', { type: 'channel', common: { name: 'General' }, native: {} });
-        await this.setObjectNotExistsAsync('general.control', {
-            type: 'channel',
-            common: { name: 'Control' },
-            native: {},
-        });
-        for (const field of GENERAL_CONTROL_FIELDS) {
-            const stateId = `general.control.${field.stateId}`;
-            await this.setObjectNotExistsAsync(stateId, {
-                type: 'state',
-                common: commonFromWriteField(field),
-                native: {},
-            });
-            this.controlBindings.set(stateId, { writeParam: field.writeParam, writeTransform: field.writeTransform });
+    /**
+     * bat_mode/bat_power_reserve used to live under a standalone `general.control.*` channel;
+     * they now live under each battery instance's own control channel instead (see
+     * createComponentInstanceObjects). Removes the old objects so a dev/test install doesn't keep
+     * an orphaned empty "General" folder around after upgrading.
+     */
+    private async removeLegacyGeneralControlObjects(): Promise<void> {
+        await this.delObjectAsync('general', { recursive: true }).catch(() => undefined);
+    }
+
+    /**
+     * manualSoc was removed from CHARGEPOINT_CONTROL_FIELDS (no live MQTT confirmation was
+     * possible for it, and it was rarely useful) - cleans up any already-created
+     * chargepoint.<id>.control.manualSoc object left over from before that change.
+     *
+     * @param chargepointIds - currently enabled chargepoint ids
+     */
+    private async removeLegacyManualSocObjects(chargepointIds: number[]): Promise<void> {
+        for (const id of chargepointIds) {
+            await this.delObjectAsync(`chargepoint.${id}.control.manualSoc`).catch(() => undefined);
         }
     }
 
-    private async createComponentObjects(ids: ComponentIds): Promise<void> {
+    private async createComponentObjects(ids: ComponentIds, rows: ComponentTableRow[]): Promise<void> {
+        const nameByKey = new Map(rows.filter(row => row.name).map(row => [`${row.type}:${row.id}`, row.name!]));
         for (const type of COMPONENT_TYPES) {
             for (const id of ids[type]) {
-                await this.createComponentInstanceObjects(type, id);
+                await this.createComponentInstanceObjects(type, id, nameByKey.get(`${type}:${id}`));
             }
         }
     }
 
-    private async createComponentInstanceObjects(type: ComponentType, id: number): Promise<void> {
+    /**
+     * @param type - component type
+     * @param id - component instance id
+     * @param customName - user-supplied name from the component table (Components tab), if any -
+     *   always applied (not just on first creation) so renaming an existing row takes effect on
+     *   the next restart without needing to delete/recreate the channel object.
+     */
+    private async createComponentInstanceObjects(type: ComponentType, id: number, customName?: string): Promise<void> {
         const channelId = `${type}.${id}`;
-        await this.setObjectNotExistsAsync(channelId, {
+        await this.extendObjectAsync(channelId, {
             type: 'channel',
-            common: { name: `${type} ${id}` },
+            common: { name: customName ?? `${type} ${id}` },
             native: {},
         });
 
@@ -202,9 +235,13 @@ class Openwb2 extends utils.Adapter {
             return;
         }
 
+        // extendObjectAsync (not setObjectNotExistsAsync) so a definition change - a fixed unit, a
+        // renamed label - reaches objects an earlier adapter version already created, not just
+        // fresh ones. These states are entirely code-defined (unlike the channel name above, there
+        // is no user-supplied value to preserve), so always re-syncing common is safe.
         const readFields = READ_FIELDS_BY_TYPE[type] ?? [];
         for (const field of readFields) {
-            await this.setObjectNotExistsAsync(`${channelId}.${field.stateId}`, {
+            await this.extendObjectAsync(`${channelId}.${field.stateId}`, {
                 type: 'state',
                 common: commonFromReadField(field),
                 native: {},
@@ -219,7 +256,7 @@ class Openwb2 extends utils.Adapter {
             });
             for (const field of CHARGEPOINT_CONTROL_FIELDS) {
                 const stateId = `${channelId}.control.${field.stateId}`;
-                await this.setObjectNotExistsAsync(stateId, {
+                await this.extendObjectAsync(stateId, {
                     type: 'state',
                     common: commonFromWriteField(field),
                     native: {},
@@ -228,6 +265,29 @@ class Openwb2 extends utils.Adapter {
                     writeParam: field.writeParam,
                     idParam: field.idParam,
                     componentId: id,
+                    writeTransform: field.writeTransform,
+                });
+            }
+        }
+
+        if (type === 'battery') {
+            await this.setObjectNotExistsAsync(`${channelId}.control`, {
+                type: 'channel',
+                common: { name: 'Control' },
+                native: {},
+            });
+            for (const field of BATTERY_CONTROL_FIELDS) {
+                const stateId = `${channelId}.control.${field.stateId}`;
+                await this.extendObjectAsync(stateId, {
+                    type: 'state',
+                    common: commonFromWriteField(field),
+                    native: {},
+                });
+                // No idParam/componentId - bat_mode/bat_power_reserve are genuinely global writes
+                // (see BATTERY_CONTROL_FIELDS' own comment), even though the state lives under this
+                // specific battery id's channel.
+                this.controlBindings.set(stateId, {
+                    writeParam: field.writeParam,
                     writeTransform: field.writeTransform,
                 });
             }
@@ -382,8 +442,7 @@ class Openwb2 extends utils.Adapter {
 
     /**
      * Some message was sent to this instance over the message box - used by the admin UI's
-     * "Test connection" (Connection tab), "Check now" (MQTT tab), and "Probe now" (Components
-     * tab) buttons.
+     * "Test connection" (Connection tab) and "Probe now" (Components tab) buttons.
      *
      * @param obj - incoming message
      */
@@ -407,13 +466,44 @@ class Openwb2 extends utils.Adapter {
         }
     }
 
+    /**
+     * Tests both the HTTP (write) and MQTT (read) connections in one go, since the admin UI's
+     * Connection tab has a single combined "Test connection" button - see the message payload
+     * shape ConnectionTab.tsx sends.
+     *
+     * @param obj - incoming message, `message` holds both the HTTP and MQTT connection fields
+     */
     private async handleTestConnection(obj: ioBroker.Message): Promise<void> {
-        const cfg = (obj.message ?? {}) as SimpleApiConnectionConfig;
-        const result: SimpleApiResult<Record<string, unknown>> = await this.client.read(cfg, {
-            get_chargepoint_all: 0,
-        });
+        const cfg = (obj.message ?? {}) as SimpleApiConnectionConfig & {
+            mqttPort: number;
+            mqttUsername: string;
+            mqttPassword: string;
+        };
+        const mqttCfg: MqttConnectionConfig = {
+            host: cfg.host,
+            port: cfg.mqttPort,
+            username: cfg.mqttUsername,
+            password: cfg.mqttPassword,
+        };
+
+        const [http, mqtt] = await Promise.all([
+            // get_lastlivevaluesjson reads one always-retained, ID-independent topic - unlike
+            // get_chargepoint_all, it can't hit a nonexistent-ID mosquitto_sub timeout (~8s on
+            // the real device, confirmed live) just because chargepoint 0 happens not to exist.
+            this.client.read(cfg, { get_lastlivevaluesjson: 1 }),
+            testMqttConnection(mqttCfg),
+        ]);
+
         if (obj.callback) {
-            this.sendTo(obj.from, obj.command, result.ok ? { result: 'ok' } : { error: result.error }, obj.callback);
+            this.sendTo(
+                obj.from,
+                obj.command,
+                {
+                    http: http.ok ? { ok: true } : { ok: false, error: http.error },
+                    mqtt,
+                },
+                obj.callback,
+            );
         }
     }
 

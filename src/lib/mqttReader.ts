@@ -15,6 +15,7 @@ import {
     PV_READ_FIELDS,
     CONSUMER_READ_FIELDS,
     buildMqttFieldLookup,
+    buildControlLiveLookup,
     coerceFieldValue,
     type ReadFieldDef,
 } from './stateDefinitions';
@@ -24,6 +25,42 @@ export interface MqttConnectionConfig {
     port: number;
     username?: string;
     password?: string;
+}
+
+/**
+ * One-shot connectivity check for the admin UI's "Test connection" button - opens a short-lived
+ * connection (separate from the adapter's own persistent one), waits for either a successful
+ * connect or an error/timeout, then always disconnects. Never subscribes to anything.
+ *
+ * @param cfg - MQTT broker connection details
+ * @param timeoutMs - how long to wait before giving up (default 5s)
+ */
+export function testMqttConnection(
+    cfg: MqttConnectionConfig,
+    timeoutMs = 5000,
+): Promise<{ ok: boolean; error?: string }> {
+    return new Promise(resolve => {
+        const client = mqtt.connect(`mqtt://${cfg.host}:${cfg.port}`, {
+            username: cfg.username || undefined,
+            password: cfg.password || undefined,
+            connectTimeout: timeoutMs,
+            reconnectPeriod: 0, // this is a one-shot probe - never auto-reconnect
+        });
+
+        let settled = false;
+        const finish = (result: { ok: boolean; error?: string }): void => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            client.end(true);
+            resolve(result);
+        };
+
+        client.on('connect', () => finish({ ok: true }));
+        client.on('error', err => finish({ ok: false, error: err.message }));
+        setTimeout(() => finish({ ok: false, error: 'Timed out' }), timeoutMs);
+    });
 }
 
 type SimpleApiType = Exclude<ComponentType, 'io'>;
@@ -36,7 +73,11 @@ const MQTT_FIELD_LOOKUP: Record<SimpleApiType, Map<string, ReadFieldDef>> = {
     consumer: buildMqttFieldLookup(CONSUMER_READ_FIELDS),
 };
 
+/** Only chargepoint has any control fields with a live MQTT source - see ControlLiveSource's docs. */
+const CONTROL_LIVE_LOOKUP = buildControlLiveLookup();
+
 export type ValueListener = (type: SimpleApiType, id: number, field: ReadFieldDef, value: ioBroker.StateValue) => void;
+export type ControlValueListener = (id: number, controlStateId: string, value: ioBroker.StateValue) => void;
 export type IoValueListener = (
     id: number,
     outputType: 'digital_output' | 'analog_output',
@@ -58,6 +99,7 @@ export type ConnectionListener = (connected: boolean) => void;
 export class MqttReader {
     private client: MqttClient | undefined;
     private readonly valueListeners = new Set<ValueListener>();
+    private readonly controlValueListeners = new Set<ControlValueListener>();
     private readonly ioValueListeners = new Set<IoValueListener>();
     private readonly connectionListeners = new Set<ConnectionListener>();
     private readonly observed: Record<ComponentType, Set<number>> = {
@@ -101,6 +143,11 @@ export class MqttReader {
 
     public onValue(cb: ValueListener): void {
         this.valueListeners.add(cb);
+    }
+
+    /** Fires for chargepoint control fields with a live MQTT source - see ControlLiveSource's docs. */
+    public onControlValue(cb: ControlValueListener): void {
+        this.controlValueListeners.add(cb);
     }
 
     public onIoValue(cb: IoValueListener): void {
@@ -149,16 +196,28 @@ export class MqttReader {
         }
 
         this.observed[parsed.type].add(parsed.id);
+        const normalized = normalizeMqttValue(payload);
 
         const field = MQTT_FIELD_LOOKUP[parsed.type].get(parsed.fieldPath);
-        if (!field) {
-            return; // a real field we don't map yet, or a set/config topic - not an error
+        if (field) {
+            const value = coerceFieldValue(normalized, field.type);
+            for (const listener of this.valueListeners) {
+                listener(parsed.type, parsed.id, field, value);
+            }
         }
 
-        const value = coerceFieldValue(normalizeMqttValue(payload), field.type);
-        for (const listener of this.valueListeners) {
-            listener(parsed.type, parsed.id, field, value);
+        if (parsed.type === 'chargepoint') {
+            const controlField = CONTROL_LIVE_LOOKUP.get(parsed.fieldPath);
+            if (controlField) {
+                const raw = controlField.fromMqtt ? controlField.fromMqtt(normalized) : normalized;
+                const value = coerceFieldValue(raw, controlField.type);
+                for (const listener of this.controlValueListeners) {
+                    listener(parsed.id, controlField.controlStateId, value);
+                }
+            }
         }
+        // a field matching neither lookup is a real field we don't map yet, or a set/config topic
+        // we don't route - not an error either way.
     }
 
     private handleIoMessage(id: number, fieldPath: string, payload: string): void {

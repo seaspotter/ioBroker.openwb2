@@ -6,7 +6,7 @@ import {
     BATTERY_READ_FIELDS,
     PV_READ_FIELDS,
     CONSUMER_READ_FIELDS,
-    GENERAL_CONTROL_FIELDS,
+    BATTERY_CONTROL_FIELDS,
     extractReadValue,
     coerceFieldValue,
     buildMqttFieldLookup,
@@ -119,9 +119,14 @@ describe('buildMqttFieldLookup', () => {
 
     it('omits fields with no mqttField (no live MQTT equivalent found)', () => {
         const lookup = buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS);
-        const configName = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'configName')!;
-        expect(configName.mqttField).to.be.undefined;
-        expect([...lookup.values()]).to.not.include(configName);
+        const chargeTemplateName = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'chargeTemplateName')!;
+        expect(chargeTemplateName.mqttField).to.be.undefined;
+        expect([...lookup.values()]).to.not.include(chargeTemplateName);
+    });
+
+    it('maps configName to the config topic, not the flat get/ mirror', () => {
+        const lookup = buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS);
+        expect(lookup.get('config/name')?.stateId).to.equal('configName');
     });
 });
 
@@ -156,8 +161,8 @@ describe('field tables', () => {
         }
     });
 
-    it('general control fields take no id (bat_mode/bat_power_reserve are global)', () => {
-        for (const field of GENERAL_CONTROL_FIELDS) {
+    it('battery control fields take no id (bat_mode/bat_power_reserve are global)', () => {
+        for (const field of BATTERY_CONTROL_FIELDS) {
             expect(field.idParam).to.be.undefined;
         }
     });

@@ -1,12 +1,18 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 import { DEFAULT_REQUEST_TIMEOUT_MS, MAX_TIMER_MS } from './constants';
 
+/**
+ * Path to simpleapi.php on the openWB webserver - part of openWB's own install layout, not
+ * something that varies per install, so it's a hardcoded constant rather than a config field. If
+ * this ever changes upstream, that's an adapter code update, not a per-user setting.
+ */
+const SIMPLE_API_BASE_PATH = '/openWB/simpleAPI/simpleapi.php';
+
 /** Connection details needed to reach simpleapi.php - a subset of the full adapter config. */
 export interface SimpleApiConnectionConfig {
     protocol: 'http' | 'https';
     host: string;
     port: number;
-    basePath: string;
     authMethod: 'none' | 'bearer' | 'userpass';
     token?: string;
     username?: string;
@@ -95,7 +101,7 @@ export class SimpleApiClient {
      * @param cfg - connection details
      */
     private buildUrl(cfg: SimpleApiConnectionConfig): string {
-        return `${cfg.protocol}://${cfg.host}:${cfg.port}${cfg.basePath}`;
+        return `${cfg.protocol}://${cfg.host}:${cfg.port}${SIMPLE_API_BASE_PATH}`;
     }
 
     /**

@@ -44,7 +44,7 @@ export const MAX_TIMER_MS = 2147483647;
 export const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
 export const DEFAULT_POLL_INTERVAL_S = 15;
 export const DEFAULT_POLL_CONCURRENCY = 4;
-export const DEFAULT_DISCOVERY_INTERVAL_MIN = 60;
+export const DEFAULT_DISCOVERY_INTERVAL_MIN = 1440; // 24h
 
 /** simpleapi.php's own param name for the list_components discovery endpoint. */
 export const LIST_COMPONENTS_PARAM = 'list_components';

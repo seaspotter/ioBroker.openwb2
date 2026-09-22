@@ -1,15 +1,16 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
-import { MuiThemeProvider } from '@material-ui/core/styles';
-import theme from '@iobroker/adapter-react/Theme';
-import Utils from '@iobroker/adapter-react/Components/Utils';
+import { createRoot } from 'react-dom/client';
+import { ThemeProvider } from '@mui/material/styles';
+import { Theme, Utils } from '@iobroker/adapter-react-v5';
 import App from './app';
 
 let themeName = Utils.getThemeName();
 
+const root = createRoot(document.getElementById('root')!);
+
 function build(): void {
-    ReactDOM.render(
-        <MuiThemeProvider theme={theme(themeName)}>
+    root.render(
+        <ThemeProvider theme={Theme(themeName)}>
             <App
                 adapterName="openwb2"
                 onThemeChange={_theme => {
@@ -17,8 +18,7 @@ function build(): void {
                     build();
                 }}
             />
-        </MuiThemeProvider>,
-        document.getElementById('root'),
+        </ThemeProvider>,
     );
 }
 

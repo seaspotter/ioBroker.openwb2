@@ -25,22 +25,40 @@ describe('parseComponentTable', () => {
         ]);
 
         expect(parseComponentTable(raw)).to.deep.equal([
-            { type: 'chargepoint', id: 0, enabled: true },
-            { type: 'chargepoint', id: 1, enabled: false },
+            { type: 'chargepoint', id: 0, enabled: true, name: undefined },
+            { type: 'chargepoint', id: 1, enabled: false, name: undefined },
         ]);
     });
 
     it('defaults a missing "enabled" field to true', () => {
         const raw = JSON.stringify([{ type: 'chargepoint', id: 0 }]);
-        expect(parseComponentTable(raw)).to.deep.equal([{ type: 'chargepoint', id: 0, enabled: true }]);
+        expect(parseComponentTable(raw)).to.deep.equal([
+            { type: 'chargepoint', id: 0, enabled: true, name: undefined },
+        ]);
+    });
+
+    it('carries a user-supplied name through, and drops blank/non-string ones', () => {
+        const raw = JSON.stringify([
+            { type: 'chargepoint', id: 0, enabled: true, name: 'Interne openWB' },
+            { type: 'counter', id: 1, enabled: true, name: '   ' },
+            { type: 'counter', id: 2, enabled: true, name: 42 },
+        ]);
+        expect(parseComponentTable(raw)).to.deep.equal([
+            { type: 'chargepoint', id: 0, enabled: true, name: 'Interne openWB' },
+            { type: 'counter', id: 1, enabled: true, name: undefined },
+            { type: 'counter', id: 2, enabled: true, name: undefined },
+        ]);
     });
 
     it('round-trips through serializeComponentTable', () => {
         const rows: ComponentTableRow[] = [
-            { type: 'chargepoint', id: 0, enabled: true },
+            { type: 'chargepoint', id: 0, enabled: true, name: 'Interne openWB' },
             { type: 'pv', id: 2, enabled: false },
         ];
-        expect(parseComponentTable(serializeComponentTable(rows))).to.deep.equal(rows);
+        expect(parseComponentTable(serializeComponentTable(rows))).to.deep.equal([
+            { type: 'chargepoint', id: 0, enabled: true, name: 'Interne openWB' },
+            { type: 'pv', id: 2, enabled: false, name: undefined },
+        ]);
     });
 });
 
@@ -62,7 +80,7 @@ describe('enabledIdsByType', () => {
 });
 
 describe('mergeDiscovered', () => {
-    it('adds new rows for newly discovered IDs, enabled by default', () => {
+    it('adds new rows for newly discovered IDs, disabled by default (user must opt in)', () => {
         const existing: ComponentTableRow[] = [{ type: 'chargepoint', id: 0, enabled: true }];
 
         const { rows, added } = mergeDiscovered(existing, {
@@ -76,7 +94,7 @@ describe('mergeDiscovered', () => {
 
         expect(rows).to.have.deep.members([
             { type: 'chargepoint', id: 0, enabled: true },
-            { type: 'chargepoint', id: 1, enabled: true },
+            { type: 'chargepoint', id: 1, enabled: false },
         ]);
         expect(added).to.deep.equal([{ type: 'chargepoint', id: 1 }]);
     });

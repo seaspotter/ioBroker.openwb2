@@ -5,6 +5,10 @@
     "compilerOptions": {
         "noEmit": false,
         "outDir": "./build",
+        // TypeScript 6's rootDir inference got stricter about cross-boundary imports (admin/
+        // importing shared logic from ../src/lib, e.g. componentTable.ts) - explicit rootDir
+        // avoids a TS6059 "not under rootDir" error that didn't occur under TS 5.9.
+        "rootDir": "..",
         "sourceMap": true,
         "sourceRoot": "./src",
         "noImplicitAny": false,

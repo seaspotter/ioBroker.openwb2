@@ -137,10 +137,12 @@ export const CHARGEPOINT_READ_FIELDS: ReadFieldDef[] = [
     str('state_str', 'stateStr', 'State'),
     str('fault_str', 'faultStr', 'Fault'),
     num('fault_state', 'faultState', 'Fault state', 'value'),
-    num('imported', 'imported', 'Energy imported', 'value.energy', 'kWh'),
-    num('exported', 'exported', 'Energy exported', 'value.energy', 'kWh'),
-    num('daily_imported', 'dailyImported', 'Energy imported today', 'value.energy', 'kWh'),
-    num('daily_exported', 'dailyExported', 'Energy exported today', 'value.energy', 'kWh'),
+    // imported/exported (and their daily variants) are always Wh on the wire, regardless of type -
+    // confirmed live against a real device (see stateDefinitions.test.ts).
+    num('imported', 'imported', 'Energy imported', 'value.energy', 'Wh'),
+    num('exported', 'exported', 'Energy exported', 'value.energy', 'Wh'),
+    num('daily_imported', 'dailyImported', 'Energy imported today', 'value.energy', 'Wh'),
+    num('daily_exported', 'dailyExported', 'Energy exported today', 'value.energy', 'Wh'),
     num('phases_in_use', 'phasesInUse', 'Phases in use', 'value'),
     bool('plug_state', 'plugState', 'Vehicle plugged in'),
     bool('charge_state', 'chargeState', 'Currently charging'),
@@ -152,8 +154,10 @@ export const CHARGEPOINT_READ_FIELDS: ReadFieldDef[] = [
     ...phases('power_factors', 'powerFactor', 'Power factor', 'value'),
     str('rfid', 'rfid', 'Last RFID tag'),
     str('rfid_timestamp', 'rfidTimestamp', 'Last RFID tag timestamp'),
-    // No live MQTT equivalent found (flat mirror doesn't include it) - stays HTTP-only for now.
-    { ...str('config_name', 'configName', 'Chargepoint name'), mqttField: undefined },
+    // Not part of the flat mirror, but the daemon mirrors chargepoint's whole raw topic tree
+    // (not just get/), so the config topic's own "name" field is reachable under
+    // openWB/simpleAPI/chargepoint/<id>/config/name - confirmed live.
+    str('config_name', 'configName', 'Chargepoint name', 'text', 'config/name'),
     // Flat mirror calls this "vehicle_name", not "connected_vehicle_name".
     str('connected_vehicle_name', 'connectedVehicleName', 'Connected vehicle name', 'text', 'vehicle_name'),
     // No live MQTT equivalent found - stays HTTP-only for now.
@@ -314,18 +318,92 @@ export const CHARGEPOINT_CONTROL_FIELDS: WriteFieldDef[] = [
         idParam: 'chargepoint_nr',
         min: 0,
     },
-    {
-        stateId: 'manualSoc',
-        name: 'Manual state of charge',
-        type: 'number',
-        role: 'level.battery',
-        unit: '%',
-        writeParam: 'manual_soc',
-        idParam: 'chargepoint_nr',
-        min: 0,
-        max: 100,
-    },
 ];
+
+export interface ControlLiveSource {
+    /** matches a CHARGEPOINT_CONTROL_FIELDS entry's stateId */
+    controlStateId: string;
+    /**
+     * Field path relative to openWB/simpleAPI/chargepoint/<id>/ - confirmed live against the exact
+     * topic each setXxx() handler in ParameterHandler.php itself reads/writes, not necessarily the
+     * same as any CHARGEPOINT_READ_FIELDS entry's mqttField: for instant_charging_limit/_amount/_soc
+     * specifically, the flat top-level mirror of the same name was confirmed live to disagree with
+     * the nested charge_template value these writes actually touch (e.g. flat "soc"/80 vs. nested
+     * "none"/100 on the same real device at the same moment) - using the flat name here would make
+     * "does writing confirm the real value" occasionally show the wrong thing.
+     */
+    mqttField: string;
+    type: 'number' | 'string' | 'boolean';
+    /** wire value -> control state value, for the fields where units/scale genuinely differ */
+    fromMqtt?: (value: unknown) => ioBroker.StateValue;
+}
+
+/**
+ * Lets the adapter show a live, device-confirmed value for chargepoint control states instead of
+ * leaving them null until the user writes something - and, after a write, replaces the optimistic
+ * echo (handleControlWrite's own setState) with the real applied value shortly after, since openWB
+ * republishes charge_template/config over MQTT on every change regardless of who made it.
+ *
+ * batMode/batPowerReserve (BATTERY_CONTROL_FIELDS, under battery.<id>.control.*) have no entry
+ * here: their setters write to openWB/general/..., a topic root simpleAPI_mqtt.py never mirrors (it
+ * only subscribes to bat/pv/chargepoint/counter+consumer) - confirmed by reading
+ * ParameterHandler.php's setBatMode/setBatPowerReserve, so there is no live value for those within
+ * openWB/simpleAPI/# to bind to. They keep the plain optimistic echo.
+ */
+export const CHARGEPOINT_CONTROL_LIVE_FIELDS: ControlLiveSource[] = [
+    { controlStateId: 'chargemode', mqttField: 'set/charge_template/chargemode/selected', type: 'string' },
+    {
+        controlStateId: 'chargecurrent',
+        mqttField: 'set/charge_template/chargemode/instant_charging/current',
+        type: 'number',
+    },
+    {
+        controlStateId: 'minimalPvSoc',
+        mqttField: 'set/charge_template/chargemode/pv_charging/min_soc',
+        type: 'number',
+    },
+    {
+        controlStateId: 'minimalPermanentCurrent',
+        mqttField: 'set/charge_template/chargemode/pv_charging/min_current',
+        type: 'number',
+    },
+    {
+        // Same x100000 legacy scale as the HTTP write side (setMaxPriceEco divides by 100000
+        // before storing) - see CHARGEPOINT_READ_FIELDS' max_price_eco comment for the read-only
+        // mirror's take on the same quirk.
+        controlStateId: 'maxPriceEco',
+        mqttField: 'set/charge_template/chargemode/eco_charging/max_price',
+        type: 'number',
+        fromMqtt: value => Math.round(Number(value) * 100000),
+    },
+    { controlStateId: 'chargepointLock', mqttField: 'manual_lock', type: 'boolean' },
+    {
+        controlStateId: 'instantChargingLimit',
+        mqttField: 'set/charge_template/chargemode/instant_charging/limit/selected',
+        type: 'string',
+    },
+    {
+        // setInstantChargingAmount converts kWh -> Wh before writing; convert back for display.
+        controlStateId: 'instantChargingAmount',
+        mqttField: 'set/charge_template/chargemode/instant_charging/limit/amount',
+        type: 'number',
+        fromMqtt: value => Number(value) / 1000,
+    },
+    {
+        controlStateId: 'instantChargingSoc',
+        mqttField: 'set/charge_template/chargemode/instant_charging/limit/soc',
+        type: 'number',
+    },
+    // setVehicle writes config.ev - not the same field as the read-only vehicle_id (that's the
+    // chargepoint's own currently-detected vehicle, a different concept - confirmed live: vehicle_id
+    // was null while config/ev was 1 on the same real chargepoint).
+    { controlStateId: 'vehicle', mqttField: 'config/ev', type: 'number' },
+];
+
+/** Builds a `mqttField -> ControlLiveSource` lookup for routing incoming chargepoint MQTT messages. */
+export function buildControlLiveLookup(): Map<string, ControlLiveSource> {
+    return new Map(CHARGEPOINT_CONTROL_LIVE_FIELDS.map(field => [field.mqttField, field]));
+}
 
 export const COUNTER_READ_FIELDS: ReadFieldDef[] = [
     num('power', 'power', 'Power', 'value.power', 'W'),
@@ -334,10 +412,11 @@ export const COUNTER_READ_FIELDS: ReadFieldDef[] = [
     ...phases('powers', 'power', 'Power', 'value.power', 'W'),
     ...phases('power_factors', 'powerFactor', 'Power factor', 'value'),
     num('frequency', 'frequency', 'Grid frequency', 'value', 'Hz'),
-    num('exported', 'exported', 'Energy exported', 'value.energy', 'kWh'),
-    num('daily_exported', 'dailyExported', 'Energy exported today', 'value.energy', 'kWh'),
-    num('imported', 'imported', 'Energy imported', 'value.energy', 'kWh'),
-    num('daily_imported', 'dailyImported', 'Energy imported today', 'value.energy', 'kWh'),
+    // See CHARGEPOINT_READ_FIELDS' imported/exported comment - same Wh-on-the-wire quirk here.
+    num('exported', 'exported', 'Energy exported', 'value.energy', 'Wh'),
+    num('daily_exported', 'dailyExported', 'Energy exported today', 'value.energy', 'Wh'),
+    num('imported', 'imported', 'Energy imported', 'value.energy', 'Wh'),
+    num('daily_imported', 'dailyImported', 'Energy imported today', 'value.energy', 'Wh'),
     str('fault_str', 'faultStr', 'Fault'),
     num('fault_state', 'faultState', 'Fault state', 'value'),
 ];
@@ -346,10 +425,10 @@ export const BATTERY_READ_FIELDS: ReadFieldDef[] = [
     num('power', 'power', 'Power', 'value.power', 'W'),
     num('soc', 'soc', 'State of charge', 'value.battery', '%'),
     ...phases('currents', 'current', 'Current', 'value.current', 'A'),
-    num('imported', 'imported', 'Energy imported (discharged)', 'value.energy', 'kWh'),
-    num('exported', 'exported', 'Energy exported (charged)', 'value.energy', 'kWh'),
-    num('daily_imported', 'dailyImported', 'Energy imported today', 'value.energy', 'kWh'),
-    num('daily_exported', 'dailyExported', 'Energy exported today', 'value.energy', 'kWh'),
+    num('imported', 'imported', 'Energy imported (discharged)', 'value.energy', 'Wh'),
+    num('exported', 'exported', 'Energy exported (charged)', 'value.energy', 'Wh'),
+    num('daily_imported', 'dailyImported', 'Energy imported today', 'value.energy', 'Wh'),
+    num('daily_exported', 'dailyExported', 'Energy exported today', 'value.energy', 'Wh'),
     str('fault_str', 'faultStr', 'Fault'),
     num('fault_state', 'faultState', 'Fault state', 'value'),
     bool('power_limit_controllable', 'powerLimitControllable', 'Power limit controllable'),
@@ -358,10 +437,10 @@ export const BATTERY_READ_FIELDS: ReadFieldDef[] = [
 export const PV_READ_FIELDS: ReadFieldDef[] = [
     num('power', 'power', 'Power', 'value.power', 'W'),
     ...phases('currents', 'current', 'Current', 'value.current', 'A'),
-    num('exported', 'exported', 'Energy exported', 'value.energy', 'kWh'),
-    num('daily_exported', 'dailyExported', 'Energy exported today', 'value.energy', 'kWh'),
-    num('monthly_exported', 'monthlyExported', 'Energy exported this month', 'value.energy', 'kWh'),
-    num('yearly_exported', 'yearlyExported', 'Energy exported this year', 'value.energy', 'kWh'),
+    num('exported', 'exported', 'Energy exported', 'value.energy', 'Wh'),
+    num('daily_exported', 'dailyExported', 'Energy exported today', 'value.energy', 'Wh'),
+    num('monthly_exported', 'monthlyExported', 'Energy exported this month', 'value.energy', 'Wh'),
+    num('yearly_exported', 'yearlyExported', 'Energy exported this year', 'value.energy', 'Wh'),
     str('fault_str', 'faultStr', 'Fault'),
     num('fault_state', 'faultState', 'Fault state', 'value'),
 ];
@@ -381,9 +460,9 @@ export const CONSUMER_READ_FIELDS: ReadFieldDef[] = [
     ...phases('currents', 'current', 'Current', 'value.current', 'A'),
     ...phases('voltages', 'voltage', 'Voltage', 'value.voltage', 'V'),
     ...phases('powers', 'power', 'Power', 'value.power', 'W'),
-    num('imported', 'imported', 'Energy imported', 'value.energy', 'kWh'),
-    num('exported', 'exported', 'Energy exported', 'value.energy', 'kWh'),
-    num('daily_imported', 'dailyImported', 'Energy imported today', 'value.energy', 'kWh'),
+    num('imported', 'imported', 'Energy imported', 'value.energy', 'Wh'),
+    num('exported', 'exported', 'Energy exported', 'value.energy', 'Wh'),
+    num('daily_imported', 'dailyImported', 'Energy imported today', 'value.energy', 'Wh'),
     num('phases_in_use', 'phasesInUse', 'Phases in use', 'value'),
     bool('charge_state', 'chargeState', 'Currently active'),
     str('state_str', 'stateStr', 'State'),
@@ -391,8 +470,15 @@ export const CONSUMER_READ_FIELDS: ReadFieldDef[] = [
     num('fault_state', 'faultState', 'Fault state', 'value'),
 ];
 
-/** Global (not per-instance) writable fields - see project memory: bat_mode/bat_power_reserve take no id. */
-export const GENERAL_CONTROL_FIELDS: WriteFieldDef[] = [
+/**
+ * Battery-related control fields, shown under each battery instance's own control channel
+ * (battery.<id>.control.*) for consistency with chargepoint's layout - but the underlying writes
+ * are still genuinely global (openWB's setBatMode/setBatPowerReserve take no id parameter at all,
+ * confirmed from source), so idParam stays unset here regardless of which battery id the state
+ * lives under. With more than one battery, each one's control channel reflects/writes the same
+ * single global setting.
+ */
+export const BATTERY_CONTROL_FIELDS: WriteFieldDef[] = [
     {
         stateId: 'batMode',
         name: 'Battery mode',

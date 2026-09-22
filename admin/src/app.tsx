@@ -1,17 +1,15 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import React from 'react';
-import AppBar from '@material-ui/core/AppBar';
-import Tabs from '@material-ui/core/Tabs';
-import Tab from '@material-ui/core/Tab';
+import AppBar from '@mui/material/AppBar';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 
-import GenericApp from '@iobroker/adapter-react/GenericApp';
-import type { GenericAppProps, GenericAppSettings } from '@iobroker/adapter-react/types';
-import I18n from '@iobroker/adapter-react/i18n';
+import { GenericApp, I18n, type GenericAppProps, type GenericAppSettings } from '@iobroker/adapter-react-v5';
 
 import ConnectionTab from './components/ConnectionTab';
-import MqttTab from './components/MqttTab';
 import ComponentsTab from './components/ComponentsTab';
 
-/** Admin settings UI: Connection/MQTT/Components tabs over the instance's native config. */
+/** Admin settings UI: Connection/Components tabs over the instance's native config. */
 class App extends GenericApp {
     // plain field + forceUpdate rather than React state: GenericApp's setState() type is fixed to
     // its own GenericAppState by the base class, so a locally-added state field can't flow through
@@ -23,7 +21,19 @@ class App extends GenericApp {
         const extendedProps: GenericAppSettings = {
             ...props,
             encryptedFields: ['token', 'password', 'mqttPassword'],
-            translations: { en: {} },
+            translations: {
+                en: require('./i18n/en.json'),
+                de: require('./i18n/de.json'),
+                ru: require('./i18n/ru.json'),
+                pt: require('./i18n/pt.json'),
+                nl: require('./i18n/nl.json'),
+                fr: require('./i18n/fr.json'),
+                it: require('./i18n/it.json'),
+                es: require('./i18n/es.json'),
+                pl: require('./i18n/pl.json'),
+                uk: require('./i18n/uk.json'),
+                'zh-cn': require('./i18n/zh-cn.json'),
+            },
         };
         super(props, extendedProps);
     }
@@ -58,7 +68,6 @@ class App extends GenericApp {
                         variant="scrollable"
                     >
                         <Tab label={I18n.t('Connection')} />
-                        <Tab label={I18n.t('MQTT')} />
                         <Tab label={I18n.t('Components')} />
                     </Tabs>
                 </AppBar>
@@ -74,15 +83,6 @@ class App extends GenericApp {
                         />
                     )}
                     {this.tab === 1 && (
-                        <MqttTab
-                            native={this.state.native}
-                            onChange={onNativeChange}
-                            socket={this.socket}
-                            instanceId={this.instanceId}
-                            onToast={text => this.showToast(text)}
-                        />
-                    )}
-                    {this.tab === 2 && (
                         <ComponentsTab
                             native={this.state.native}
                             onChange={onNativeChange}

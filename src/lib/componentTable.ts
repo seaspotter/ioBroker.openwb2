@@ -14,6 +14,13 @@ export interface ComponentTableRow {
     type: ComponentType;
     id: number;
     enabled: boolean;
+    /**
+     * User-supplied display name, used as the component's channel name in the object tree.
+     * openWB only exposes a configured name over MQTT for chargepoints (config/name, mirrored
+     * under openWB/simpleAPI/#) - counter/battery/pv/io have no name anywhere in that namespace,
+     * so this is the only way to get a human-readable name for those types.
+     */
+    name?: string;
 }
 
 function isComponentType(value: unknown): value is ComponentType {
@@ -43,7 +50,12 @@ export function parseComponentTable(raw: string | undefined): ComponentTableRow[
         if (!Array.isArray(parsed)) {
             return [];
         }
-        return parsed.filter(isValidRow).map(row => ({ type: row.type, id: row.id, enabled: row.enabled !== false }));
+        return parsed.filter(isValidRow).map(row => ({
+            type: row.type,
+            id: row.id,
+            enabled: row.enabled !== false,
+            name: typeof row.name === 'string' && row.name.trim() !== '' ? row.name : undefined,
+        }));
     } catch {
         return [];
     }
@@ -76,13 +88,18 @@ export function enabledIdsByType(rows: ComponentTableRow[]): ComponentIds {
 }
 
 /**
- * Merges freshly discovered component IDs into the existing table: adds a new enabled row for
+ * Merges freshly discovered component IDs into the existing table: adds a new, disabled row for
  * every (type, id) not already present as a row (regardless of that existing row's enabled
  * state), and never touches or removes any existing row. This is the whole answer to "how do we
  * know an ID was already there, and what happens when one disappears": the table's row set *is*
  * the "already known" record, discovery only ever proposes additions to it, and a row that a
  * fresh discovery no longer reports simply isn't touched - the caller can flag that in the UI
  * without this function needing to decide anything about it.
+ *
+ * New rows start disabled rather than enabled - discovery (whether a manual "Probe now" or the
+ * background interval check) should only ever *propose* a component, never activate it on its
+ * own. Enabling it (and thus creating its objects/starting to poll it) is the user's own explicit
+ * choice, ticked in the Components tab and confirmed with Save.
  *
  * @param rows - existing table rows
  * @param discovered - freshly discovered component IDs, e.g. from a live list_components probe
@@ -100,7 +117,7 @@ export function mergeDiscovered(
             const key = `${type}:${id}`;
             if (!known.has(key)) {
                 known.add(key);
-                newRows.push({ type, id, enabled: true });
+                newRows.push({ type, id, enabled: false });
                 added.push({ type, id });
             }
         }

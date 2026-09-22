@@ -14,6 +14,11 @@
 
         "noEmitOnError": true,
         "outDir": "./build/",
+        // TS 6.0.3 infers rootDir per-compilation from whichever files actually get built - for a
+        // ts-node/mocha run that only touches src/lib/*.test.ts and their imports, that shrinks to
+        // "./src/lib" and then errors because it doesn't cover test/**/*.ts too (same TS6059-class
+        // regression already worked around in admin/tsconfig.json - see its own comment).
+        "rootDir": ".",
         "removeComments": false,
 
         // This is necessary for the automatic typing of the adapter config
