@@ -156,8 +156,7 @@ released into the ioBroker repository, see
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.1.0 (2026-09-22)
 
 - (SeaSpotter) Reads now come from a live MQTT connection (`openWB/simpleAPI/#` plus the raw IO
   namespace) instead of HTTP polling - lower latency, and reliable component discovery. Writes

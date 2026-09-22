@@ -1,131 +1,144 @@
 {
-    "common": {
-        "name": "openwb2",
-        "version": "0.0.1",
-        "news": {
-            "0.0.1": {
-                "en": "initial release",
-                "de": "Erstveröffentlichung",
-                "ru": "Начальная версия",
-                "pt": "lançamento inicial",
-                "nl": "Eerste uitgave",
-                "fr": "Première version",
-                "it": "Versione iniziale",
-                "es": "Versión inicial",
-                "pl": "Pierwsze wydanie",
-                "uk": "Початкова версія",
-                "zh-cn": "首次出版"
-            }
-        },
-        "titleLang": {
-            "en": "OpenWB 2",
-            "de": "OpenWB 2",
-            "ru": "OpenWB 2",
-            "pt": "OpenWB 2",
-            "nl": "OpenWB2",
-            "fr": "OuvertWB 2",
-            "it": "OpenWB2",
-            "es": "Abierto WB 2",
-            "pl": "OpenWB2",
-            "uk": "OpenWB 2",
-            "zh-cn": "开放式WB 2"
-        },
-        "desc": {
-            "en": "Reads chargepoints, counters, battery, PV and consumers from an openWB 2 wallbox controller live over MQTT, and lets you control charging via its simpleAPI HTTP interface",
-            "de": "Liest Ladepunkte, Zähler, Batterie, PV und Verbraucher live über MQTT von einem openWB 2 Wallbox-Controller aus und ermöglicht die Steuerung des Ladevorgangs über die simpleAPI-HTTP-Schnittstelle",
-            "ru": "Считывает точки зарядки, счетчики, аккумулятор, PV и потребителей из контроллера настенной коробки openWB 2 в реальном времени через MQTT и позволяет управлять зарядкой через простой интерфейс API HTTP.",
-            "pt": "Lê pontos de carregamento, contadores, bateria, energia fotovoltaica e consumidores de um controlador de caixa de parede openWB 2 ao vivo via MQTT e permite controlar o carregamento por meio de sua interface HTTP simpleAPI",
-            "nl": "Leest oplaadpunten, tellers, batterij, PV en consumenten van een openWB 2 wallbox-controller live via MQTT, en laat u het opladen regelen via de eenvoudige API HTTP-interface",
-            "fr": "Lit les points de charge, les compteurs, la batterie, les PV et les consommateurs à partir d'un contrôleur de boîte murale openWB 2 en direct sur MQTT et vous permet de contrôler la charge via son interface HTTP simpleAPI",
-            "it": "Legge punti di ricarica, contatori, batteria, fotovoltaico e utenze da un controller wallbox openWB 2 in tempo reale su MQTT e consente di controllare la ricarica tramite la sua semplice interfaccia HTTP API",
-            "es": "Lee puntos de carga, contadores, baterías, energía fotovoltaica y consumidores desde un controlador de caja de pared openWB 2 en vivo a través de MQTT y le permite controlar la carga a través de su sencilla interfaz API HTTP.",
-            "pl": "Odczytuje punkty ładowania, liczniki, akumulator, fotowoltaikę i odbiorniki z kontrolera openWB 2 wallbox na żywo przez MQTT i pozwala kontrolować ładowanie za pomocą interfejsu HTTP simpleAPI",
-            "uk": "Зчитує зарядні точки, лічильники, батарею, PV та споживачів з контролера openWB 2 wallbox у прямому ефірі через MQTT і дозволяє вам контролювати зарядку через простий інтерфейс API HTTP",
-            "zh-cn": "通过 MQTT 从 openWB 2 墙盒控制器实时读取充电点、计数器、电池、PV 和消费者，并让您通过其 simpleAPI HTTP 接口控制充电"
-        },
-        "authors": [
-            "SeaSpotter <seatowage@gmail.com>"
-        ],
-        "keywords": [
-            "openwb",
-            "ev-charging",
-            "wallbox",
-            "simpleapi",
-            "pv"
-        ],
-        "licenseInformation": {
-            "type": "free",
-            "license": "MIT"
-        },
-        "platform": "Javascript/Node.js",
-        "icon": "openwb2.png",
-        "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/seaspotter/ioBroker.openwb2/main/admin/openwb2.png",
-        "readme": "https://github.com/seaspotter/ioBroker.openwb2/blob/main/README.md",
-        "loglevel": "info",
-        "tier": 3,
-        "mode": "daemon",
-        "type": "energy",
-        "compact": true,
-        "connectionType": "local",
-        "dataSource": "push",
-        "messagebox": true,
-        "adminUI": {
-            "config": "materialize"
-        },
-        "dependencies": [
-            {
-                "js-controller": ">=6.0.11"
-            }
-        ],
-        "globalDependencies": [
-            {
-                "admin": ">=7.0.23"
-            }
-        ]
+  "common": {
+    "name": "openwb2",
+    "version": "0.1.0",
+    "news": {
+      "0.1.0": {
+        "en": "* Reads now come from a live MQTT connection (`openWB/simpleAPI/#` plus the raw IO\n  namespace) instead of HTTP polling - lower latency, and reliable component discovery. Writes\n  are unchanged (still HTTP). See the README's \"Why MQTT for reads, HTTP for writes\" section.\n* Migrated the admin UI to `@iobroker/adapter-react-v5`/MUI 6 (the previous\n  `@iobroker/adapter-react` was incompatible with current ioBroker Admin and showed a blank\n  settings page) and merged the Connection/MQTT tabs into one, with a shared host field and a\n  combined \"Test connection\" button.\n* Fixed a missing `\"messagebox\": true` in `io-package.json` that silently broke\n  \"Test connection\" and \"Probe now\".\n* Fixed the connection test's HTTP check timing out against real devices (was probing\n  a chargepoint ID that may not exist; now uses `get_lastlivevaluesjson`).\n* Fixed all cumulative energy fields being mislabeled as kWh - they're Wh on the wire.\n* Most chargepoint control states now show their real, device-confirmed value instead\n  of staying `null` until written. Removed `manualSoc` (no MQTT confirmation is possible for it).\n  Moved `batMode`/`batPowerReserve` under each battery instance's own control channel.\n* Newly discovered components are added disabled, not enabled, so probing never\n  silently activates a device you haven't reviewed. Added a per-row Name column for components\n  other than chargepoints (openWB doesn't report a name for those over MQTT).\n* Removed the redundant \"Check now\" button from the Components tab - \"Probe now\"\n  already covers the same use case now that discovery adds rows disabled instead of active.\n* Added PV charging limit control: `pvChargingLimit`/`pvChargingAmount`/`pvChargingSoc`\n  under each chargepoint's control channel, mirroring the existing instant-charging limit fields\n  (limit type none/amount/soc, amount in kWh, SoC in %), with the same live device-confirmed value.",
+        "de": "* Lesungen kommen jetzt live über MQTT (`OpenWB/SimpleAPI/#` plus rohe IO\n  Namespace) statt HTTP-Polling — geringere Latenz und sichere Komponentensuche. Schreibt\n  unverändert (noch HTTP). Siehe README „Warum MQTT für Lesungen, HTTP für Schreiben“.\n* Migrierte die Admin-UI zu `@iobroker /adapter-react-v5 `/MUI 6 (zuvor\n  `@iobroker /adapter-react` war inkompatibel mit ioBroker Admin und zeigte ein Leerzeichen\n  Einstellungsseite) und verband die Tabs Connection/MQTT, mit Shared-Host-Feld und\n  Kombitaste „Verbindung testen“.\n* Fehlende Messagebox: true in `io-package.json` behoben, die still kaputt ging\n  „Verbindung testen“ und „Test now“\n* Das HTTP-Check-Timeout für echte Geräte wurde behoben (testete\n  evtl. keine Ladepunkt-ID; nutzt jetzt `get_lastlivevalues.json`).\n* Alle kumulativen Energiefelder wurden falsch als kWh angegeben — Wh im Kabel.\n* Die meisten Ladestationen zeigen nun ihren echten, vom Gerät bestätigten Wert\n  bis zum Schreiben „Null“ zu bleiben. `ManualSOC` entfernt (keine MQTT-Bestätigung möglich).\n  `BatMode`/`BatPowerReserve` wurde in den Steuerkanal jeder Akkuinstanz verschoben.\n* Neu entdeckte Komponenten sind deaktiviert, nicht aktiviert, also nie testen\n  aktiviert still ein Gerät, das Sie nicht geprüft haben. Neue Spalte „Name pro Zeile“ für Bauteile\n  außer Ladepunkten (OpenWB meldet keinen Namen für diese über MQTT).\n* Das überflüssige „Jetzt prüfen“ -Tab „Komponenten“ entfernt — „Jetzt testen“\n  deckt den gleichen Fall ab, da Discovery deaktivierte statt aktive Zeilen hinzufügt.\n* PV-Ladelimit hinzugefügt: `PvChargingLimit`/`PvChargingAmount`/`PvChargingSOC`\n  im Steuerkanal jeder Ladestation, entsprechend den vorhandenen Sofortlade-Limitfeldern\n  (Limittyp keine/Menge/Soc, Menge in kWh, SoC in%), mit demselben Live-Geräte-Wert.",
+        "ru": "* Теперь чтение происходит из живого соединения MQTT (`OpenWB/SimpleAPI/#`) плюс необработанный ввод-вывод\n  namespace) вместо опроса HTTP — меньшая задержка и надежное обнаружение компонентов. Пишет\n  остались без изменений (по-прежнему HTTP). См. раздел README «Почему MQTT для чтения, HTTP для записи».\n* Пользовательский интерфейс администратора перенесен на `@iobroker /adapter-react-v5 `/MUI 6 (предыдущий вариант)\n  `@iobroker /adapter-react` был несовместим с текущим администратором IOBroker и показал пустое поле\n  (страница настроек) и объединили вкладки Connection/MQTT в одну с полем общего хоста и\n  комбинированная кнопка «Проверить соединение».\n* Исправлено отсутствие символа `\"messagebox»: true` в `io-package.json`, которое незаметно ломалось\n  «Проверить соединение» и «Проверить сейчас».\n* Исправлено время ожидания проверки HTTP при тестировании соединения с реальными устройствами (проводилось зондирование)\n  идентификатор точки зарядки, которого, возможно, не существует; теперь используется `get_lastlivevaluesjson`).\n* Исправлено, что все поля кумулятивной энергии, неправильно обозначаемые как кВтч, — это Wh на проводе.\n* Большинство состояний управления точками зарядки теперь показывают свое реальное значение, подтвержденное устройством\n  оставаться «нулевым» до тех пор, пока оно не будет написано. Удален `ManualSoc` (подтверждение MQTT для него невозможно).\n  Перемещены режимы «BatMode»/«BatPowerReserve» под собственный канал управления каждого экземпляра батареи.\n* Вновь обнаруженные компоненты добавлены, отключены, не включены, поэтому проверка никогда не проводится\n  автоматически активирует устройство, которое вы не просматривали. Добавлен столбец «Имя для каждой строки» для компонентов\n  кроме точек оплаты (OpenWB не сообщает имена пользователей, использующих MQTT).\n* Удалена лишняя кнопка «Проверить сейчас» со вкладки «Компоненты» — «Проверить сейчас»\n  теперь уже используется тот же вариант использования, когда обнаружение добавляет строки, отключенные, а не активные.\n* Добавлен контроль предела зарядки фотоэлектрических систем: `Лимит зарядки PV`/`Количество зарядки`/`PvchargingsoC`\n  под каналом управления каждой точки зарядки, зеркально отображая существующие поля пределов мгновенной зарядки\n  (тип ограничения нет/сумма/количество соц, количество в кВтч, SoC в%) с тем же значением, подтвержденным устройством в реальном времени.",
+        "pt": "* As leituras agora vêm de uma conexão MQTT ativa (`openWB/SimpleAPI/#`) e IO bruto\n  namespace) em vez de HTTP - menor latência e descoberta confiável de componentes. Grava\n  inalterados (ainda HTTP). Veja a seção “Por que ler MQTT e escrever HTTP” do README.\n* Migrou a IU admin para `@iobroker /adapter-react-v5 `/MUI 6 (a anterior\n  `@iobroker /adapter-react` era incompatível com o atual IOBroker Admin e estava em branco\n  página de configurações) e mesclou as guias Conexão/MQTT em uma, com um campo host e\n  botão combinado “Testar conexão”.\n* Corrigido um erro silencioso de `\"messagebox”: true` em `io-package.json`\n  “Teste a conexão” e “Teste já”.\n* Corrigido o tempo limite de HTTP do teste de conexão em dispositivos reais\n  um ID de chargepoint que pode não existir; agora usa get_lastlivevalues.json).\n* Corrigido todos os campos de energia acumulados como kWh - eles são Wh no fio.\n* A maioria dos estados de controle de carga agora mostra seu valor real confirmado\n  de ficar `nulo` até ser escrito. O `ManualSoc` foi removido (sem confirmação MQTT).\n  Moveu `Batmode`/`BatPowerReserve` para o canal de controle de cada bateria.\n* Componentes recém-descobertos são desativados e não ativados.\n  ativa silenciosamente um aparelho não revisado. Adicionou a coluna Nome por linha\n  além de chargepoints (o OpenWB não informa um nome para eles no MQTT).\n* Removido o botão redundante “Check now” da aba Components - “Probe now”\n  já cobre o mesmo caso de uso, agora que o discovery adiciona linhas desativadas em vez de ativas.\n* Adicionado controle de limite de carga PV: `PVChargingLimit`/`PVChargingAmount`/`PVChargingSoC`\n  sob o canal de controle de cada ponto de carga, refletindo os campos de limite de carga\n  (tipo limite none/amount/soc, em kWh, SoC em%), com o mesmo valor confirmado pelo dispositivo.",
+        "nl": "* Lezingen zijn nu afkomstig van een live MQTT-verbinding (`OpenWB/SimpleAPI/#`) plus de onbewerkte I/O\n  namespace) in plaats van HTTP-enquêtes — lagere latentie en betrouwbare detectie van componenten. Schrijft\n  zijn ongewijzigd (nog steeds HTTP). Zie de sectie „Waarom MQTT voor lezen, HTTP voor schrijven” van README.\n* De gebruikersinterface voor beheerders is gemigreerd naar `@iobroker /adapter-react-v5 `/MUI 6 (de vorige\n  `@iobroker /adapter-react` was niet compatibel met de huidige IOBroker Admin en werd blanco weergegeven\n  instellingenpagina) en de tabbladen Connection/MQTT samengevoegd tot één, met een gedeeld hostveld en een\n  gecombineerde knop „Aansluiting testen”.\n* Er is een ontbrekende `\"messagebox” opgelost: true` in `io-package.json` die stilletjes kapot ging\n  „De verbinding testen” en „Nu testen”.\n* De time-out van de HTTP-check van de verbindingstest met echte apparaten is opgelost (was aan het onderzoeken\n  een laadpunt-ID die misschien niet bestaat; gebruikt nu `get_last@livevalues/json`).\n* We hebben opgelost dat alle cumulatieve energievelden verkeerd zijn gelabeld als kWh - ze zijn Wh op de draad.\n* In de meeste laadstations wordt nu in plaats daarvan de werkelijke waarde weergegeven die door het apparaat is bevestigd\n  om „\" nul \"” te blijven tot het geschreven is.” `ManualSoC` verwijderd (hiervoor is geen MQTT-bevestiging mogelijk).\n  `BatMode`/`BatPowerReserve` onder het eigen bedieningskanaal van elke batterij-instance verplaatst.\n* Nieuw ontdekte componenten worden toegevoegd, uitgeschakeld, niet ingeschakeld, dus nooit sonderen\n  activeert stilletjes een apparaat dat u niet hebt beoordeeld. Een kolom met de naam per rij toegevoegd voor componenten\n  met uitzondering van laadpunten (OpenWB geeft geen naam door voor mensen die meer dan MQTT hebben).\n* De redundante knop „Nu controleren” verwijderd op het tabblad Componenten - „Nu onderzoeken”\n  dekt al hetzelfde gebruik nu Discovery rijen toevoegt die zijn uitgeschakeld in plaats van actief.\n* Beheersing van de PV-laadlimiet toegevoegd: `PvChargingLimit`/`PvChargingAmount`/`PV Charging Soc`\n  onder het bedieningskanaal van elk laadpunt, in overeenstemming met de bestaande grensvelden voor onmiddellijk opladen\n  (limiettype geen/bedrag/soc, hoeveelheid in kWh, SoC in%), met dezelfde waarde die door het apparaat onder spanning is bevestigd.",
+        "fr": "* Les lectures se font via une connexion MQTT en direct (« OpenWB/SimpleAPI/# ») et les E/S brutes\n  namespace) au lieu du sondage HTTP : latence plus faible et découverte fiable des composants. Écrit\n  sont inchangés (toujours HTTP). Voir la section « Pourquoi MQTT pour lire, HTTP pour écrire » du README.\n* J'ai migré l'admin vers `@iobroker /adapter-react-v5 `/MUI 6 (l'ancien\n  `@iobroker /adapter-react` était incompatible avec l'administrateur IObroker actuel et était vide\n  settings) et a fusionné les onglets Connection/MQTT en un seul, avec un champ hôte partagé et\n  bouton combiné « Test de connexion ».\n* Correction d'un « messagebox » : true qui se cassait en silence dans « io-package.json »\n  « Test connection » et « Probe now ».\n* Correction du délai de vérification HTTP du test de connexion par rapport à de vrais appareils\n  un identifiant Chargepoint (qui utilise désormais « get_lastlivevaluesjson »).\n* Tous les champs d'énergie cumulés ont été mal étiquetés en kWh. C'est du Wh sur le fil.\n* La plupart des états de recharge affichent désormais leur valeur réelle confirmée\n  de rester « nul » avant d'être écrit. « ManualSOC » a été supprimé (aucune confirmation MQTT n'est possible).\n  J'ai déplacé « BatMode\"/« BatPowerReserve » sur le canal de contrôle de chaque batterie.\n* Les nouveaux composants sont ajoutés, désactivés, donc il ne faut jamais sonder\n  active en silence un appareil que vous n'avez pas évalué. Ajout d'un nom par ligne pour les composants\n  autres que les bornes de recharge (OpenWB ne donne pas de nom pour celles via MQTT).\n* Suppression du bouton redondant « Vérifier » de l'onglet Composants, « Sonder maintenant »\n  couvre déjà le même cas d'utilisation puisque Discovery ajoute des lignes désactivées au lieu d'actives.\n* Ajout d'un contrôle de la limite de charge PV : `PVChargingLimit`/`PVChargingAmount`/`PVChargingSoc`\n  sous le canal de contrôle de chaque borne de recharge, en reprenant les limites de recharge instantanée\n  (type de limite aucune/amount/soc, quantité en kWh, SoC en %), avec la même valeur confirmée par appareil.",
+        "it": "* Le letture ora provengono da MQTT live (`OpenWB/SimpleAPI/#` più l'IO raw\n  namespace) invece del polling HTTP: latenza bassa e scoperta sicura dei componenti. Scrive\n  invariati (ancora HTTP). Vedi la sezione «Perché MQTT in lettura, HTTP in scrittura»\n* Ha migrato l'admin UI a `@iobroker /adapter-react-v5 `/MUI 6 (precedente\n  `@iobroker /adapter-react` non era compatibile con IOBroker Admin e mostrava un vuoto\n  impostazioni) e ha unito le schede Connection/MQTT, con un campo host condiviso e\n  tasto combinato «Test connection».\n* Risolto un `messagebox»: true` mancante in `io-package.json`\n  «Prova connessione» e «Sonda ora».\n* Risolto il timeout HTTP del test di connessione su dispositivi reali\n  un ID chargepoint che può non esistere; ora usa get_lastlivevaluesjson).\n* Risolto il problema con i campi energetici cumulativi in kWh: Wh sul filo.\n* La maggior parte degli stati di chargepoint ora mostra il valore reale confermato\n  di rimanere «nullo» fino a scritto. `ManualSoc` rimosso (non è possibile confermare MQTT).\n  Ha spostato `BatMode`/`BatPowerReserve` nel canale di controllo di ogni batteria.\n* I componenti appena scoperti sono disabilitati, quindi mai sondati\n  attiva in silenzio un dispositivo che non ha recensito. Aggiunta una colonna Nome per riga\n  diversi dai punti di ricarica (OpenWB non indica un nome su MQTT).\n* Rimosso il pulsante «Verifica ora» dalla scheda Componenti - «Sonda ora»\n  copre già lo stesso caso d'uso ora che Discovery aggiunge righe disattivate\n* Aggiunto il limite di carica FV: `PVChargingLimit`/`PVChargingAmount`/`PVChargingSoC`\n  su ogni canale di ricarica, rispecchiando i limiti di ricarica istantanea esistenti\n  (limite none/importo/soc, kWh, SoC in%), con lo stesso valore confermato dal dispositivo.",
+        "es": "* Ahora lee desde una conexión MQTT activa (`OpenWB/SimpleAPI/#`) más la IO sin procesar\n  namespace) en lugar de sondeos HTTP: menor latencia y detección fiable de componentes. Escribe\n  no han cambiado (sigue siendo HTTP). Consulte la sección «Por qué MQTT lee y HTTP escribe» del README.\n* Migró la UI admin a `@iobroker /adapter-react-v5 `/MUI 6 (el anterior\n  `@iobroker /adapter-react` no era compatible con el administrador actual de IOBroker y estaba en blanco\n  página de ajustes) y fusionó las pestañas Connection/MQTT en una, con un campo de host compartido y\n  botón «Probar conexión» combinado.\n* Se ha corregido un `\"buzón»: cierto` que faltaba en `io-package.json` y se rompió silenciosamente\n  «Probar conexión» y «Probar ahora».\n* Se corrigió el tiempo de espera de la prueba de conexión HTTP en dispositivos reales (estaba sondeando\n  un ID de punto de cargo que puede no existir; ahora usa `get_lastlivevaluesjson`).\n* Se ha corregido que todos los campos de energía acumulados se etiquetaran mal como kWh, son Wh en el cable.\n* La mayoría de los estados de control de puntos de carga muestran ahora su valor real confirmado\n  de quedarse «nulo» hasta que se escriba. Se ha eliminado `ManualsOC` (no es posible confirmarlo con MQTT).\n  Ha movido BatMode/BatPowerReserve al canal de control de cada instancia de batería.\n* Los componentes recién descubiertos se añaden desactivados, no activados, por lo que nunca se prueba\n  activa silenciosamente un dispositivo que no ha reseñado. Añadió una columna de nombres por fila para los componentes\n  aparte de los puntos de carga (OpenWB no informa de su nombre en MQTT).\n* Se quitó el botón redundante «Comprobar ahora» de la pestaña Componentes: «Probar ahora»\n  ya cubre el mismo caso de uso ahora que Discovery añade filas inhabilitadas en lugar de activas.\n* Control de límite de carga fotovoltaica añadido: `PVChargingLimit`/`PVChargingSoC`\n  en el canal de control de cada punto de carga, reflejando los campos de límite de carga instantánea existentes\n  (tipo de límite ninguno/cantidad/soc, cantidad en kWh, SoC en%), con el mismo valor confirmado por el equipo.",
+        "pl": "* Odczyty pochodzą teraz z połączenia MQTT na żywo (`OpenWB/SimpleAPI/#` plus surowe IO\n  przestrzeń nazw) zamiast sondowania HTTP - niższe opóźnienie i wiarygodne wykrywanie komponentów. Pisze\n  są niezmienione (nadal HTTP). Zobacz sekcję README „Dlaczego MQTT dla odczytów, HTTP dla zapisów”.\n* Przeniesiono interfejs administratora do `@iobroker /adapter-react-v5 `/MUI 6 (poprzedni\n  `@iobroker /adapter-response` był niekompatybilny z aktualnym administratorem ioBroker i pokazywał puste miejsce\n  strona ustawień) i połączyła karty Connection/MQTT w jedną, z udostępnionym polem hosta i\n  połączony przycisk „Test połączenia”.\n* Naprawiono brakujące `\"messagebox”: true` w `io-package.json`, które po cichu się zepsuło\n  „Testuj połączenie” i „Sonda teraz”.\n* Naprawiono czas sprawdzenia HTTP testu połączenia z rzeczywistymi urządzeniami (był sondowany\n  identyfikator punktu ładowania, który może nie istnieć; teraz używa `get_lastlivevaluesjson`).\n* Naprawiono, że wszystkie pola energii skumulowanej były błędnie oznaczone jako kWh - są one Wh na przewodzie.\n* Większość stanów kontroli punktów ładowania pokazuje teraz swoją rzeczywistą, potwierdzoną przez urządzenie wartość\n  pozostanie „zero”, dopóki nie zostanie napisane. Usunięto `ManualSoc` (nie jest możliwe potwierdzenie MQTT).\n  Przeniesiono `BatMode`/`BatPowerReserve` pod własny kanał sterowania każdej instancji baterii.\n* Nowo odkryte komponenty są dodawane wyłączone, nie włączone, więc sondowanie nigdy nie\n  cicho aktywuje urządzenie, którego nie sprawdzałeś. Dodano kolumnę Nazwa poszczególnych wierszy dla komponentów\n  inne niż punkty ładowania (OpenWB nie zgłasza nazwy dla osób powyżej MQTT).\n* Usunięto nadmiarowy przycisk „Sprawdź teraz” z zakładki Komponenty - „Sonda teraz”\n  Obejmuje już ten sam przypadek użycia, gdy wykrywanie dodaje wiersze wyłączone zamiast aktywnych.\n* Dodano kontrolę limitu ładowania PV: `PVChargingLimit`/`PVChargingAmount`/`PVChargingSoc`\n  pod kanałem kontrolnym każdego punktu ładowania, odzwierciedlając istniejące pola limitu ładowania natychmiastowego\n  (typ limitu nie/kwota/soc, kwota w kWh, SoC w%), z tą samą wartością potwierdzoną przez urządzenie na żywo.",
+        "uk": "* Тепер читання надходять із живого з'єднання MQTT (`OpenWB/simpleAPI/#` плюс необроблений ввод\n  простір імен) замість опитування HTTP - менша затримка та надійне виявлення компонентів. пише\n  не змінюються (все ще HTTP). Дивіться розділ README «Чому MQTT для читання, HTTP для запису».\n* Перенесено інтерфейс адміністратора на `@iobroker /adapter-react-v5 `/MUI 6 (попередній\n  `@iobroker /адапter-react` був несумісний з поточним адміністратором IObroker і показав порожню\n  сторінка налаштувань) і об'єднали вкладки Connection/MQTT в одну, із загальним полем хоста та а\n  комбінована кнопка «Тестування підключення».\n* Виправлено відсутність `\"скриньки повідомлень»: true` у `io-package.json`, який мовчки зламався\n  «Тестувати з'єднання» і «Зондувати зараз».\n* Виправлено час перевірки HTTP тесту з'єднання з реальними пристроями (було зондування\n  ідентифікатор точки зарядки, якого може не існувати; тепер використовує `get_lastlivevaluesjson`).\n* Виправлено, що всі кумулятивні енергетичні поля неправильно позначені як кВт·год - вони є Wh на проводі.\n* Більшість станів контролю точки зарядки тепер показують своє реальне, підтверджене пристроєм значення\n  залишатися «нульовим» до написання. Вилучено `ManualSoc` (підтвердження MQTT для нього неможливе).\n  Переміщено `BatMode`/`BatPowerReserve` під власний канал керування кожного екземпляра батареї.\n* Нещодавно виявлені компоненти додані вимкнені, не ввімкнені, тому зондування ніколи не було\n  безшумно активує пристрій, який ви не переглянули. Додано стовпець імені для кожного рядка для компонентів\n  крім точок зарядки (OpenWB не повідомляє про ім'я тих, хто перевищує MQTT).\n* Видалено зайву кнопку «Перевірити зараз» з вкладки Компоненти - «Зонсувати зараз»\n  вже охоплює той самий випадок використання тепер, коли Discovery додає рядки вимкнені замість активних.\n* Додано контроль граничної зарядки PV: `PVліміт заряду`/`PVвеличина заряду`/`pvChargingSoc`\n  під каналом управління кожної точки зарядки, що відображає існуючі поля обмеження миттєвої зарядки\n  (тип ліміту відсутній/кількість/soc, кількість у кВт/год, SoC у%), з таким же значенням, підтвердженим живим пристроєм.",
+        "zh-cn": "* 读取现在来自实时 MQTT 连接（`OpenWB/SimpleAPI/#` 加上原始 IO\n  命名空间）而不是 HTTP 轮询——延迟更低，组件发现更可靠。写作\n  保持不变（仍为 HTTP）。请参阅自述文件的 “为什么选择 MQTT 用于读取，HTTP 用于写入” 部分。\n* 将管理界面迁移到 `@iobroker /adapter-react-v5 `/MUI 6（之前的\n  `@iobroker /adapter-react` 与当前 IOBroker 管理员不兼容并显示空白\n  设置页面）并将 Connection/MQTT 选项卡合并为一个，其中包含一个共享主机字段和\n  组合的 “测试连接” 按钮。\n* 修复了 `io-package.json` 中缺失的 ``messagebox”: true`但会默默中断的问题\n  “测试连接” 和 “立即探测”。\n* 修复了针对真实设备的连接测试的 HTTP 检查超时问题（正在探测）\n  一个可能不存在的充电点 ID；现在使用 get_lastlivevaluesjson）。\n* 修复了所有累积能量场被错误标记为 kWh 的问题-它们是电线上的 Wh。\n* 现在，大多数Chargepoint控制状态改为显示设备确认的真实值\n  在写入之前保持 “空值”。移除了 `manualSoc`（无法对其进行 MQTT 确认）。\n  将 `batmode`/`batpowerReserve`移到了每个电池实例自己的控制通道下。\n* 新发现的组件是添加禁用的，未启用的，因此永远不要进行探测\n  静默激活您尚未审阅的设备。为组件添加了每行名称列\n  除了充电点（OpenWB 不报告那些通过 MQTT 的充电点的名称）。\n* 从 “组件” 选项卡中删除了多余的 “立即检查” 按钮-“立即探测”\n  既然发现增加了禁用行而不是活动行，已经涵盖了相同的用例。\n* 增加了光伏充电限额控制：`pvChargingLimit`/`pvChargingAmount`/`pvChargingsoC`\n  在每个充电点的控制通道下，镜像现有的即时充电限制字段\n  （限制类型为无/数量/soc，以千瓦时为单位，SoC 以% 为单位），且设备上线确认值相同。"
+      },
+      "0.0.1": {
+        "en": "initial release",
+        "de": "Erstveröffentlichung",
+        "ru": "Начальная версия",
+        "pt": "lançamento inicial",
+        "nl": "Eerste uitgave",
+        "fr": "Première version",
+        "it": "Versione iniziale",
+        "es": "Versión inicial",
+        "pl": "Pierwsze wydanie",
+        "uk": "Початкова версія",
+        "zh-cn": "首次出版"
+      }
     },
-    "native": {
-        "protocol": "http",
-        "host": "",
-        "port": 80,
-        "authMethod": "none",
-        "token": "",
-        "username": "",
-        "password": "",
-        "requestTimeoutMs": 5000,
-        "mqttPort": 1883,
-        "mqttUsername": "",
-        "mqttPassword": "",
-        "discoveryIntervalMin": 1440,
-        "componentTable": "[]"
+    "titleLang": {
+      "en": "OpenWB 2",
+      "de": "OpenWB 2",
+      "ru": "OpenWB 2",
+      "pt": "OpenWB 2",
+      "nl": "OpenWB2",
+      "fr": "OuvertWB 2",
+      "it": "OpenWB2",
+      "es": "Abierto WB 2",
+      "pl": "OpenWB2",
+      "uk": "OpenWB 2",
+      "zh-cn": "开放式WB 2"
     },
-    "encryptedNative": [
-        "token",
-        "password",
-        "mqttPassword"
+    "desc": {
+      "en": "Reads chargepoints, counters, battery, PV and consumers from an openWB 2 wallbox controller live over MQTT, and lets you control charging via its simpleAPI HTTP interface",
+      "de": "Liest Ladepunkte, Zähler, Batterie, PV und Verbraucher live über MQTT von einem openWB 2 Wallbox-Controller aus und ermöglicht die Steuerung des Ladevorgangs über die simpleAPI-HTTP-Schnittstelle",
+      "ru": "Считывает точки зарядки, счетчики, аккумулятор, PV и потребителей из контроллера настенной коробки openWB 2 в реальном времени через MQTT и позволяет управлять зарядкой через простой интерфейс API HTTP.",
+      "pt": "Lê pontos de carregamento, contadores, bateria, energia fotovoltaica e consumidores de um controlador de caixa de parede openWB 2 ao vivo via MQTT e permite controlar o carregamento por meio de sua interface HTTP simpleAPI",
+      "nl": "Leest oplaadpunten, tellers, batterij, PV en consumenten van een openWB 2 wallbox-controller live via MQTT, en laat u het opladen regelen via de eenvoudige API HTTP-interface",
+      "fr": "Lit les points de charge, les compteurs, la batterie, les PV et les consommateurs à partir d'un contrôleur de boîte murale openWB 2 en direct sur MQTT et vous permet de contrôler la charge via son interface HTTP simpleAPI",
+      "it": "Legge punti di ricarica, contatori, batteria, fotovoltaico e utenze da un controller wallbox openWB 2 in tempo reale su MQTT e consente di controllare la ricarica tramite la sua semplice interfaccia HTTP API",
+      "es": "Lee puntos de carga, contadores, baterías, energía fotovoltaica y consumidores desde un controlador de caja de pared openWB 2 en vivo a través de MQTT y le permite controlar la carga a través de su sencilla interfaz API HTTP.",
+      "pl": "Odczytuje punkty ładowania, liczniki, akumulator, fotowoltaikę i odbiorniki z kontrolera openWB 2 wallbox na żywo przez MQTT i pozwala kontrolować ładowanie za pomocą interfejsu HTTP simpleAPI",
+      "uk": "Зчитує зарядні точки, лічильники, батарею, PV та споживачів з контролера openWB 2 wallbox у прямому ефірі через MQTT і дозволяє вам контролювати зарядку через простий інтерфейс API HTTP",
+      "zh-cn": "通过 MQTT 从 openWB 2 墙盒控制器实时读取充电点、计数器、电池、PV 和消费者，并让您通过其 simpleAPI HTTP 接口控制充电"
+    },
+    "authors": [
+      "SeaSpotter <seatowage@gmail.com>"
     ],
-    "objects": [],
-    "instanceObjects": [
-        {
-            "_id": "info",
-            "type": "channel",
-            "common": {
-                "name": "Information"
-            },
-            "native": {}
-        },
-        {
-            "_id": "info.connection",
-            "type": "state",
-            "common": {
-                "role": "indicator.connected",
-                "name": "Device or service connected",
-                "type": "boolean",
-                "read": true,
-                "write": false,
-                "def": false
-            },
-            "native": {}
-        }
+    "keywords": [
+      "openwb",
+      "ev-charging",
+      "wallbox",
+      "simpleapi",
+      "pv"
+    ],
+    "licenseInformation": {
+      "type": "free",
+      "license": "MIT"
+    },
+    "platform": "Javascript/Node.js",
+    "icon": "openwb2.png",
+    "enabled": true,
+    "extIcon": "https://raw.githubusercontent.com/seaspotter/ioBroker.openwb2/main/admin/openwb2.png",
+    "readme": "https://github.com/seaspotter/ioBroker.openwb2/blob/main/README.md",
+    "loglevel": "info",
+    "tier": 3,
+    "mode": "daemon",
+    "type": "energy",
+    "compact": true,
+    "connectionType": "local",
+    "dataSource": "push",
+    "messagebox": true,
+    "adminUI": {
+      "config": "materialize"
+    },
+    "dependencies": [
+      {
+        "js-controller": ">=6.0.11"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=7.0.23"
+      }
     ]
+  },
+  "native": {
+    "protocol": "http",
+    "host": "",
+    "port": 80,
+    "authMethod": "none",
+    "token": "",
+    "username": "",
+    "password": "",
+    "requestTimeoutMs": 5000,
+    "mqttPort": 1883,
+    "mqttUsername": "",
+    "mqttPassword": "",
+    "discoveryIntervalMin": 1440,
+    "componentTable": "[]"
+  },
+  "encryptedNative": [
+    "token",
+    "password",
+    "mqttPassword"
+  ],
+  "objects": [],
+  "instanceObjects": [
+    {
+      "_id": "info",
+      "type": "channel",
+      "common": {
+        "name": "Information"
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.connection",
+      "type": "state",
+      "common": {
+        "role": "indicator.connected",
+        "name": "Device or service connected",
+        "type": "boolean",
+        "read": true,
+        "write": false,
+        "def": false
+      },
+      "native": {}
+    }
+  ]
 }
