@@ -1,4 +1,5 @@
 ![Logo](../../admin/openwb2.png)
+
 # ioBroker.openwb2
 
 ## openwb2 Adapter für ioBroker
@@ -113,7 +114,7 @@ stehen zu lassen.
 - Die Komponentenerkennung fügt nur Zeilen hinzu, stets deaktiviert - sie aktiviert oder löscht nie
   etwas von selbst. Eine Zeile muss selbst angekreuzt (und gespeichert) werden, sobald bestätigt ist,
   dass es sich um das erwartete Gerät handelt.
-- IO-Ausgangs-*Namen* werden vom Gerät gelesen (sie sind in openWBs eigener IO-Modul-Konfiguration
+- IO-Ausgangs-_Namen_ werden vom Gerät gelesen (sie sind in openWBs eigener IO-Modul-Konfiguration
   benutzerdefiniert), daher erscheinen `io.<id>.digital.*`/`io.<id>.analog.*`-Objekte erst, nachdem
   der Adapter mindestens eine Nachricht für dieses IO-Modul empfangen hat.
 - Für einige wenige nur lesbare Ladepunkt-Felder (`chargeTemplateName`, `minCurrent`,
@@ -128,6 +129,7 @@ stehen zu lassen.
 Siehe die englische [README.md](../../README.md#changelog) für den vollständigen Änderungsverlauf.
 
 ## Lizenz
+
 MIT License
 
 Copyright (c) 2026 SeaSpotter <seatowage@gmail.com>

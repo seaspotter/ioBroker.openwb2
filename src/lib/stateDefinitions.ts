@@ -208,14 +208,7 @@ export const CHARGEPOINT_READ_FIELDS: ReadFieldDef[] = [
         'pv_charging_limit_amount',
     ),
     // Flat mirror calls this "pv_charging_limit_soc", not "pv_charging_soc".
-    num(
-        'pv_charging_soc',
-        'pvChargingSoc',
-        'PV charging SoC limit',
-        'value.battery',
-        '%',
-        'pv_charging_limit_soc',
-    ),
+    num('pv_charging_soc', 'pvChargingSoc', 'PV charging SoC limit', 'value.battery', '%', 'pv_charging_limit_soc'),
     // Note: HTTP's max_price_eco is scaled x100000 for legacy reasons (see ParameterHandler.php);
     // the MQTT value is the real, unscaled price. This read-only mirror intentionally shows the
     // unscaled MQTT value - only the HTTP write side (chargepoint.<id>.control.maxPriceEco) uses

@@ -1,4 +1,5 @@
 ![Logo](admin/openwb2.png)
+
 # ioBroker.openwb2
 
 [![NPM version](https://img.shields.io/npm/v/iobroker.openwb2.svg)](https://www.npmjs.com/package/iobroker.openwb2)
@@ -107,7 +108,7 @@ than left silently stuck at null.
 
 - Component discovery only ever adds rows, and always disabled - it never activates or deletes anything on
   its own. Tick a row's checkbox yourself (and Save) once you've confirmed it's the device you expect.
-- IO output *names* are read from the device (they're user-defined in openWB's own io module config), so
+- IO output _names_ are read from the device (they're user-defined in openWB's own io module config), so
   `io.<id>.digital.*`/`io.<id>.analog.*` objects only appear after the adapter has received at least one
   message for that IO module.
 - A handful of read-only chargepoint fields (`chargeTemplateName`, `minCurrent`, `instantChargingCurrent`,
@@ -116,68 +117,78 @@ than left silently stuck at null.
 - The MQTT broker connection currently has no TLS option in the admin UI - only plain `mqtt://`.
 
 ## Developer manual
+
 This section is intended for the developer.
 
 ### Scripts in `package.json`
-| Script name | Description |
-|-------------|-------------|
-| `build` | Compile the TypeScript backend and the React admin UI. |
-| `watch` | Same, but watching for changes. |
-| `test:ts` | Executes the unit tests in `src/**/*.test.ts`. |
-| `test:package` | Ensures `package.json` and `io-package.json` are valid. |
-| `test:integration` | Tests the adapter startup with an actual instance of ioBroker. |
-| `test` | Runs `test:ts` and `test:package`. |
-| `check` | Type-checks both the backend and the admin UI without compiling. |
-| `lint` | Runs ESLint. |
-| `translate` | Translates admin UI texts, see [`@iobroker/adapter-dev`](https://github.com/ioBroker/adapter-dev#manage-translations). |
+
+| Script name        | Description                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `build`            | Compile the TypeScript backend and the React admin UI.                                                                 |
+| `watch`            | Same, but watching for changes.                                                                                        |
+| `test:ts`          | Executes the unit tests in `src/**/*.test.ts`.                                                                         |
+| `test:package`     | Ensures `package.json` and `io-package.json` are valid.                                                                |
+| `test:integration` | Tests the adapter startup with an actual instance of ioBroker.                                                         |
+| `test`             | Runs `test:ts` and `test:package`.                                                                                     |
+| `check`            | Type-checks both the backend and the admin UI without compiling.                                                       |
+| `lint`             | Runs ESLint.                                                                                                           |
+| `translate`        | Translates admin UI texts, see [`@iobroker/adapter-dev`](https://github.com/ioBroker/adapter-dev#manage-translations). |
 
 ### Test the adapter manually with dev-server
+
 ```bash
 dev-server watch
 ```
+
 The ioBroker.admin interface will then be available at http://localhost:8083/. See the
 [`dev-server` documentation](https://github.com/ioBroker/dev-server#command-line) for more details.
 
 ### Publishing the adapter
+
 Using GitHub Actions, automatic releases on npm can be enabled whenever a git tag matching
 `v<major>.<minor>.<patch>` is pushed - see `.github/workflows/test-and-release.yml`. To get the adapter
 released into the ioBroker repository, see
 [ioBroker.repositories](https://github.com/ioBroker/ioBroker.repositories#requirements-for-adapter-to-get-added-to-the-latest-repository).
 
 ## Changelog
+
 <!--
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
 ### **WORK IN PROGRESS**
-* (SeaSpotter) Reads now come from a live MQTT connection (`openWB/simpleAPI/#` plus the raw IO
+
+- (SeaSpotter) Reads now come from a live MQTT connection (`openWB/simpleAPI/#` plus the raw IO
   namespace) instead of HTTP polling - lower latency, and reliable component discovery. Writes
   are unchanged (still HTTP). See the README's "Why MQTT for reads, HTTP for writes" section.
-* (SeaSpotter) Migrated the admin UI to `@iobroker/adapter-react-v5`/MUI 6 (the previous
+- (SeaSpotter) Migrated the admin UI to `@iobroker/adapter-react-v5`/MUI 6 (the previous
   `@iobroker/adapter-react` was incompatible with current ioBroker Admin and showed a blank
   settings page) and merged the Connection/MQTT tabs into one, with a shared host field and a
   combined "Test connection" button.
-* (SeaSpotter) Fixed a missing `"messagebox": true` in `io-package.json` that silently broke
+- (SeaSpotter) Fixed a missing `"messagebox": true` in `io-package.json` that silently broke
   "Test connection" and "Probe now".
-* (SeaSpotter) Fixed the connection test's HTTP check timing out against real devices (was probing
+- (SeaSpotter) Fixed the connection test's HTTP check timing out against real devices (was probing
   a chargepoint ID that may not exist; now uses `get_lastlivevaluesjson`).
-* (SeaSpotter) Fixed all cumulative energy fields being mislabeled as kWh - they're Wh on the wire.
-* (SeaSpotter) Most chargepoint control states now show their real, device-confirmed value instead
+- (SeaSpotter) Fixed all cumulative energy fields being mislabeled as kWh - they're Wh on the wire.
+- (SeaSpotter) Most chargepoint control states now show their real, device-confirmed value instead
   of staying `null` until written. Removed `manualSoc` (no MQTT confirmation is possible for it).
   Moved `batMode`/`batPowerReserve` under each battery instance's own control channel.
-* (SeaSpotter) Newly discovered components are added disabled, not enabled, so probing never
+- (SeaSpotter) Newly discovered components are added disabled, not enabled, so probing never
   silently activates a device you haven't reviewed. Added a per-row Name column for components
   other than chargepoints (openWB doesn't report a name for those over MQTT).
-* (SeaSpotter) Removed the redundant "Check now" button from the Components tab - "Probe now"
+- (SeaSpotter) Removed the redundant "Check now" button from the Components tab - "Probe now"
   already covers the same use case now that discovery adds rows disabled instead of active.
-* (SeaSpotter) Added PV charging limit control: `pvChargingLimit`/`pvChargingAmount`/`pvChargingSoc`
+- (SeaSpotter) Added PV charging limit control: `pvChargingLimit`/`pvChargingAmount`/`pvChargingSoc`
   under each chargepoint's control channel, mirroring the existing instant-charging limit fields
   (limit type none/amount/soc, amount in kWh, SoC in %), with the same live device-confirmed value.
 
 ### 0.0.1 (2026-09-21)
-* (SeaSpotter) initial release
+
+- (SeaSpotter) initial release
 
 ## License
+
 MIT License
 
 Copyright (c) 2026 SeaSpotter <seatowage@gmail.com>
