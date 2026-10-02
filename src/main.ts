@@ -32,7 +32,7 @@ import {
     type ComponentType,
     type ComponentIds,
 } from './lib/constants';
-import { translated, translatedComponentLabel } from './lib/nameTranslations';
+import { translated, translatedComponentLabel, COMPONENT_TYPE_NAMES } from './lib/nameTranslations';
 
 const READ_FIELDS_BY_TYPE: Partial<Record<ComponentType, ReadFieldDef[]>> = {
     chargepoint: CHARGEPOINT_READ_FIELDS,
@@ -249,10 +249,29 @@ class Openwb2 extends utils.Adapter {
     private async createComponentObjects(ids: ComponentIds, rows: ComponentTableRow[]): Promise<void> {
         const nameByKey = new Map(rows.filter(row => row.name).map(row => [`${row.type}:${row.id}`, row.name!]));
         for (const type of COMPONENT_TYPES) {
+            if (ids[type].length === 0) {
+                continue;
+            }
+            await this.ensureTypeFolder(type);
             for (const id of ids[type]) {
                 await this.createComponentInstanceObjects(type, id, nameByKey.get(`${type}:${id}`));
             }
         }
+    }
+
+    /**
+     * Creates the `<type>` folder object itself (e.g. `chargepoint`) - the parent of every
+     * `<type>.<id>` channel. Without it, each instance channel is an "orphan" with no intermediate
+     * object, which the ioBroker object-structure checker flags as an error.
+     *
+     * @param type - component type
+     */
+    private async ensureTypeFolder(type: ComponentType): Promise<void> {
+        await this.extendObjectAsync(type, {
+            type: 'folder',
+            common: { name: COMPONENT_TYPE_NAMES[type] },
+            native: {},
+        });
     }
 
     /**
@@ -357,6 +376,7 @@ class Openwb2 extends utils.Adapter {
      * `null` if openWB isn't computing this.
      */
     private async createHomeConsumptionObjects(): Promise<void> {
+        await this.ensureTypeFolder('counter');
         await this.extendObjectAsync('counter.homeConsumption', {
             type: 'channel',
             common: { name: translated('Home consumption (estimated)') },
