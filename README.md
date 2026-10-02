@@ -23,11 +23,11 @@ targets, chargepoint lock, battery mode, ...) via its `simpleAPI` HTTP interface
 
 ### Why MQTT for reads, HTTP for writes
 
-An early version of this adapter polled `simpleapi.php` over HTTP for everything. That works, but
-`simpleapi.php` shells out to a fresh `mosquitto_sub` process per request server-side (roughly 1-2.5s per
-request) and, worse, has no reliable way to discover which component IDs actually exist - every read
-endpoint returns defaulted zeros for a nonexistent ID exactly like it would for a real, idle device, so
-there's no signal to probe for. MQTT doesn't have either problem: openWB already republishes normalized data
+Polling `simpleapi.php` over HTTP for every read would work, but `simpleapi.php` shells out to a fresh
+`mosquitto_sub` process per request server-side (roughly 1-2.5s per request) and, worse, has no reliable way
+to discover which component IDs actually exist - every read endpoint returns defaulted zeros for a
+nonexistent ID exactly like it would for a real, idle device, so there's no signal to probe for. MQTT
+doesn't have either problem: openWB already republishes normalized data
 under `openWB/simpleAPI/#` (retained, so a fresh subscribe immediately yields the current state of
 everything), and a topic for a nonexistent ID simply never arrives - discovery becomes free and reliable
 instead of a periodic network call. Writes stay on HTTP regardless: `simpleapi.php`'s control writes
@@ -40,8 +40,9 @@ it at all, and reading it would mean subscribing to the raw, non-`simpleAPI` nam
 
 ### Requirements
 
-- openWB 2.x with `simpleAPI` enabled and its MQTT broker reachable from your ioBroker host (the same
-  device usually serves both the broker and the HTTP interface).
+- openWB 2.3 or later - `simpleAPI` is always active on these versions, nothing to enable - with its
+  MQTT broker reachable from your ioBroker host (the same device usually serves both the broker and
+  the HTTP interface).
 
 ### Configuration
 

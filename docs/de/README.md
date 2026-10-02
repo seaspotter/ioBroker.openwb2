@@ -16,9 +16,9 @@ Stromgrenzen, Sofortladen-Ziele, Ladepunkt-Sperre, Batteriemodus, ...) über des
 
 ### Warum MQTT zum Lesen, HTTP zum Schreiben
 
-Eine frühe Version dieses Adapters hat `simpleapi.php` für alles per HTTP abgefragt. Das
-funktioniert, aber `simpleapi.php` startet serverseitig pro Anfrage einen neuen
-`mosquitto_sub`-Prozess (ca. 1-2,5s pro Anfrage) und hat vor allem keine zuverlässige Möglichkeit,
+`simpleapi.php` für jeden Lesevorgang per HTTP abzufragen würde funktionieren, aber `simpleapi.php`
+startet serverseitig pro Anfrage einen neuen `mosquitto_sub`-Prozess (ca. 1-2,5s pro Anfrage) und hat
+vor allem keine zuverlässige Möglichkeit,
 herauszufinden, welche Komponenten-IDs tatsächlich existieren - jeder Lese-Endpunkt liefert für eine
 nicht existierende ID genau dieselben Standard-Nullwerte wie für ein echtes, gerade untätiges Gerät;
 es gibt also kein Signal, nach dem man suchen könnte. Bei MQTT gibt es beide Probleme nicht: openWB
@@ -37,8 +37,9 @@ nicht-`simpleAPI`-Namensraum zu abonnieren.
 
 ### Voraussetzungen
 
-- openWB 2.x mit aktivierter `simpleAPI` und einem MQTT-Broker, der vom ioBroker-Host aus erreichbar
-  ist (in der Regel bedient dasselbe Gerät sowohl den Broker als auch die HTTP-Schnittstelle).
+- openWB 2.3 oder neuer - `simpleAPI` ist auf diesen Versionen immer aktiv, nichts zu aktivieren -
+  mit einem MQTT-Broker, der vom ioBroker-Host aus erreichbar ist (in der Regel bedient dasselbe
+  Gerät sowohl den Broker als auch die HTTP-Schnittstelle).
 
 ### Konfiguration
 
