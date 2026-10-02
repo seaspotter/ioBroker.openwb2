@@ -98,7 +98,7 @@ openwb2.0.pv.total.<field>                  nur lesbar: power, exported, monthly
                                              sobald mindestens ein pv.<id> aktiviert ist (siehe Components-Reiter)
 openwb2.0.chargepoint.total.<field>         nur lesbar: power, imported, exported - systemweite Summe über
                                              alle aktivierten Ladepunkte, gleiche Erscheinungsregel wie pv.total
-openwb2.0.homeConsumption.<field>           nur lesbar: power, dailyConsumption, totalConsumption,
+openwb2.0.counter.homeConsumption.<field>   nur lesbar: power, dailyConsumption, totalConsumption,
                                              excludedPower, disengageableSmarthomePower, invalidReadings -
                                              openWBs eigene geschätzte Hausverbrauchssumme (kein physischer
                                              Zähler); immer angelegt, wie info.connection - bleibt null,

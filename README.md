@@ -94,7 +94,7 @@ openwb2.0.pv.total.<field>                  read-only: power, exported, monthlyE
                                              least one pv.<id> is enabled (see Components tab below)
 openwb2.0.chargepoint.total.<field>         read-only: power, imported, exported - system-wide sum across
                                              all enabled chargepoints, same appearance rule as pv.total
-openwb2.0.homeConsumption.<field>           read-only: power, dailyConsumption, totalConsumption,
+openwb2.0.counter.homeConsumption.<field>   read-only: power, dailyConsumption, totalConsumption,
                                              excludedPower, disengageableSmarthomePower, invalidReadings -
                                              openWB's own estimated whole-house consumption (not a physical
                                              meter); always created, like info.connection - stays null if
@@ -109,7 +109,7 @@ though openWB treats them as one global setting rather than per-battery (writing
 affects the same underlying setting a second battery's control would show).
 
 All cumulative energy fields (`imported`, `exported`, and their `daily_`/`monthly_`/`yearly_` variants) are
-in **Wh** by default, matching what's actually on the wire - not kWh. The Connection tab's **Energy values
+in **Wh** by default, matching what's actually on the wire - not kWh. The Components tab's **Energy values
 shown as** setting switches this instance-wide to kWh instead, if you prefer (see "Configuration" above).
 
 Most chargepoint control states also show the real, device-confirmed current value (not just an echo of
