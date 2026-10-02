@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "openwb2",
-        "version": "0.3.0",
+        "version": "0.3.1",
         "news": {
+            "0.3.1": {
+                "en": "* Fixed `chargepoint.<id>.control`/`battery.<id>.control` channel names never updating on an existing installation.",
+                "de": "* Die Namen der Kanäle `chargepoint.<id>.control`/`battery.<id>.control` wurden korrigiert, die sich bei einer bestehenden Installation nie aktualisierten.",
+                "ru": "* Исправлены названия каналов `chargepoint.<id>.control`/`battery.<id>.control`, которые никогда не обновлялись на существующей установке.",
+                "pt": "* Corrigidos os nomes dos canais `chargepoint.<id>.control`/`battery.<id>.control` que nunca eram atualizados numa instalação existente.",
+                "nl": "* De namen van de kanalen `chargepoint.<id>.control`/`battery.<id>.control` zijn gerepareerd, die nooit werden bijgewerkt op een bestaande installatie.",
+                "fr": "* Correction des noms des canaux `chargepoint.<id>.control`/`battery.<id>.control` qui ne se mettaient jamais à jour sur une installation existante.",
+                "it": "* Corretti i nomi dei canali `chargepoint.<id>.control`/`battery.<id>.control` che non venivano mai aggiornati su un'installazione esistente.",
+                "es": "* Corregidos los nombres de los canales `chargepoint.<id>.control`/`battery.<id>.control` que nunca se actualizaban en una instalación existente.",
+                "pl": "* Naprawiono nazwy kanałów `chargepoint.<id>.control`/`battery.<id>.control`, które nigdy nie aktualizowały się w istniejącej instalacji.",
+                "uk": "* Виправлено назви каналів `chargepoint.<id>.control`/`battery.<id>.control`, які ніколи не оновлювалися в існуючій інсталяції.",
+                "zh-cn": "* 修复了 `chargepoint.<id>.control`/`battery.<id>.control` 通道名称在现有安装中从不更新的问题。"
+            },
             "0.3.0": {
                 "en": "* Migrated the admin UI to `@iobroker/gui-components` (React 19, MUI 9).",
                 "de": "* Die Admin-Oberfläche wurde auf `@iobroker/gui-components` migriert (React 19, MUI 9).",

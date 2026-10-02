@@ -1,6 +1,6 @@
 {
     "name": "iobroker.openwb2",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": "Reads chargepoints, counters, battery, PV and consumers from an openWB 2 wallbox controller live over MQTT, and lets you control charging via its simpleAPI HTTP interface",
     "author": {
         "name": "SeaSpotter",
