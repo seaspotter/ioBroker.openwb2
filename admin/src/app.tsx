@@ -4,7 +4,7 @@ import AppBar from '@mui/material/AppBar';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 
-import { GenericApp, I18n, type GenericAppProps, type GenericAppSettings } from '@iobroker/adapter-react-v5';
+import { GenericApp, I18n, type GenericAppProps, type GenericAppSettings } from '@iobroker/gui-components';
 
 import ConnectionTab from './components/ConnectionTab';
 import ComponentsTab from './components/ComponentsTab';

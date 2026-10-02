@@ -1,7 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { ThemeProvider } from '@mui/material/styles';
-import { Theme, Utils } from '@iobroker/adapter-react-v5';
+import { Theme, Utils } from '@iobroker/gui-components';
 import App from './app';
 
 let themeName = Utils.getThemeName();

@@ -7,7 +7,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
 
-import { I18n, type AdminConnection } from '@iobroker/adapter-react-v5';
+import { I18n, type AdminConnection } from '@iobroker/gui-components';
 
 import { asString, asNumber } from '../nativeUtils';
 

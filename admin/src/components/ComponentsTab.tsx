@@ -10,7 +10,7 @@ import Checkbox from '@mui/material/Checkbox';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 
-import { I18n, type AdminConnection } from '@iobroker/adapter-react-v5';
+import { I18n, type AdminConnection } from '@iobroker/gui-components';
 
 import { COMPONENT_TYPES, type ComponentIds, type ComponentType } from '../../../src/lib/constants';
 import {
