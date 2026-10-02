@@ -14,11 +14,16 @@ import {
     COUNTER_READ_FIELDS,
     BATTERY_READ_FIELDS,
     PV_READ_FIELDS,
+    PV_TOTAL_READ_FIELDS,
+    CHARGEPOINT_TOTAL_READ_FIELDS,
+    HOME_CONSUMPTION_READ_FIELDS,
     CONSUMER_READ_FIELDS,
     BATTERY_CONTROL_FIELDS,
     commonFromReadField,
     commonFromWriteField,
+    scaleEnergyValue,
     type ReadFieldDef,
+    type EnergyUnit,
 } from './lib/stateDefinitions';
 import {
     COMPONENT_TYPES,
@@ -27,6 +32,7 @@ import {
     type ComponentType,
     type ComponentIds,
 } from './lib/constants';
+import { translated, translatedComponentLabel } from './lib/nameTranslations';
 
 const READ_FIELDS_BY_TYPE: Partial<Record<ComponentType, ReadFieldDef[]>> = {
     chargepoint: CHARGEPOINT_READ_FIELDS,
@@ -36,21 +42,27 @@ const READ_FIELDS_BY_TYPE: Partial<Record<ComponentType, ReadFieldDef[]>> = {
     consumer: CONSUMER_READ_FIELDS,
 };
 
+type TotalType = 'pv' | 'chargepoint';
+
+const TOTAL_FIELDS_BY_TYPE: Record<TotalType, ReadFieldDef[]> = {
+    pv: PV_TOTAL_READ_FIELDS,
+    chargepoint: CHARGEPOINT_TOTAL_READ_FIELDS,
+};
+
 /** Describes how a write to one specific ioBroker state should be sent to simpleapi.php. */
 interface ControlBinding {
     writeParam: string;
-    idParam?: 'chargepoint_nr' | 'io_nr';
+    idParam?: 'chargepoint_nr';
     componentId?: number;
     writeTransform?: (value: ioBroker.StateValue) => string | number;
-    io?: { outputName: string; outputType: 'digital_output' | 'analog_output' };
 }
 
 class Openwb2 extends utils.Adapter {
     private client!: SimpleApiClient;
     private mqttReader!: MqttReader;
-    private componentIds: ComponentIds = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [], io: [] };
+    private componentIds: ComponentIds = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] };
+    private totalEnabled: Record<TotalType, boolean> = { pv: false, chargepoint: false };
     private readonly controlBindings = new Map<string, ControlBinding>();
-    private readonly knownIoStates = new Set<string>();
     private discoveryTimer: ioBroker.Interval | undefined;
 
     public constructor(options: Partial<utils.AdapterOptions> = {}) {
@@ -79,19 +91,30 @@ class Openwb2 extends utils.Adapter {
             this.log.warn('No openWB host configured - nothing will work until configured in the Connection tab');
         }
 
-        await this.removeLegacyGeneralControlObjects();
+        await this.removeLegacyObjects();
 
         const componentRows = parseComponentTable(this.config.componentTable);
         this.componentIds = enabledIdsByType(componentRows);
-        await this.removeLegacyManualSocObjects(this.componentIds.chargepoint);
+        await this.removeLegacyChargepointObjects(this.componentIds.chargepoint);
         this.log.info(
             `Enabled components: ${COMPONENT_TYPES.map(type => `${type}=${this.componentIds[type].length}`).join(', ')}`,
         );
         await this.createComponentObjects(this.componentIds, componentRows);
 
+        // pv/chargepoint totals aren't a discoverable device of their own, so they ride along with
+        // "at least one instance of that type is enabled" instead of getting their own row.
+        this.totalEnabled = {
+            pv: this.componentIds.pv.length > 0,
+            chargepoint: this.componentIds.chargepoint.length > 0,
+        };
+        for (const type of Object.keys(this.totalEnabled) as TotalType[]) {
+            if (this.totalEnabled[type]) {
+                await this.createTotalObjects(type);
+            }
+        }
+        await this.createHomeConsumptionObjects();
+
         this.subscribeStates('*.control.*');
-        this.subscribeStates('io.*.digital.*');
-        this.subscribeStates('io.*.analog.*');
 
         this.mqttReader.onConnectionChange(connected => {
             void this.setState('info.connection', connected, true);
@@ -100,7 +123,8 @@ class Openwb2 extends utils.Adapter {
             if (!this.componentIds[type].includes(id)) {
                 return; // observed but not enabled in the component table - ignore
             }
-            void this.setState(`${type}.${id}.${field.stateId}`, { val: value, ack: true });
+            const scaled = scaleEnergyValue(field, value, this.energyUnit());
+            void this.setState(`${type}.${id}.${field.stateId}`, { val: scaled, ack: true });
         });
         this.mqttReader.onControlValue((id, controlStateId, value) => {
             if (!this.componentIds.chargepoint.includes(id)) {
@@ -111,11 +135,16 @@ class Openwb2 extends utils.Adapter {
             // openWB's own UI, the device republishes it and this fires again shortly after.
             void this.setState(`chargepoint.${id}.control.${controlStateId}`, { val: value, ack: true });
         });
-        this.mqttReader.onIoValue((id, outputType, name, value) => {
-            if (!this.componentIds.io.includes(id)) {
+        this.mqttReader.onTotalValue((type, field, value) => {
+            if (!this.totalEnabled[type]) {
                 return;
             }
-            void this.applyIoValue(id, outputType, name, value);
+            const scaled = scaleEnergyValue(field, value, this.energyUnit());
+            void this.setState(`${type}.total.${field.stateId}`, { val: scaled, ack: true });
+        });
+        this.mqttReader.onHomeConsumptionValue((field, value) => {
+            const scaled = scaleEnergyValue(field, value, this.energyUnit());
+            void this.setState(`counter.homeConsumption.${field.stateId}`, { val: scaled, ack: true });
         });
 
         if (this.config.host) {
@@ -173,26 +202,47 @@ class Openwb2 extends utils.Adapter {
         return Number.isFinite(raw) && raw > 0 && raw <= MAX_TIMER_MS ? raw : fallback;
     }
 
-    /**
-     * bat_mode/bat_power_reserve used to live under a standalone `general.control.*` channel;
-     * they now live under each battery instance's own control channel instead (see
-     * createComponentInstanceObjects). Removes the old objects so a dev/test install doesn't keep
-     * an orphaned empty "General" folder around after upgrading.
-     */
-    private async removeLegacyGeneralControlObjects(): Promise<void> {
+    /** Deletes objects left over from an earlier dev build of this adapter - safe no-op if absent. */
+    private async removeLegacyObjects(): Promise<void> {
         await this.delObjectAsync('general', { recursive: true }).catch(() => undefined);
+        await this.delObjectAsync('homeConsumption', { recursive: true }).catch(() => undefined);
+
+        // io.<id>.* ids and output names are dynamic, so this queries for whatever exists instead
+        // of a fixed list.
+        const ioObjects = await this.getForeignObjectsAsync(`${this.namespace}.io.*`);
+        const ioRoots = new Set<string>();
+        for (const id of Object.keys(ioObjects)) {
+            const relative = id.slice(`${this.namespace}.`.length);
+            ioRoots.add(relative.split('.').slice(0, 2).join('.'));
+        }
+        for (const root of ioRoots) {
+            await this.delObjectAsync(root, { recursive: true }).catch(() => undefined);
+        }
     }
 
     /**
-     * manualSoc was removed from CHARGEPOINT_CONTROL_FIELDS (no live MQTT confirmation was
-     * possible for it, and it was rarely useful) - cleans up any already-created
-     * chargepoint.<id>.control.manualSoc object left over from before that change.
+     * Deletes chargepoint.<id>.* objects left over from an earlier dev build - safe no-op if
+     * absent.
      *
      * @param chargepointIds - currently enabled chargepoint ids
      */
-    private async removeLegacyManualSocObjects(chargepointIds: number[]): Promise<void> {
+    private async removeLegacyChargepointObjects(chargepointIds: number[]): Promise<void> {
+        const relativePaths = [
+            'control.manualSoc',
+            'evseCurrent',
+            'evseSignaling',
+            'maxEvseCurrent',
+            'minCurrent',
+            'vehicleId',
+            'socRangeUnit',
+            'control.chargecurrent',
+            'control.minimalPvSoc',
+            'control.minimalPermanentCurrent',
+        ];
         for (const id of chargepointIds) {
-            await this.delObjectAsync(`chargepoint.${id}.control.manualSoc`).catch(() => undefined);
+            for (const path of relativePaths) {
+                await this.delObjectAsync(`chargepoint.${id}.${path}`).catch(() => undefined);
+            }
         }
     }
 
@@ -216,24 +266,9 @@ class Openwb2 extends utils.Adapter {
         const channelId = `${type}.${id}`;
         await this.extendObjectAsync(channelId, {
             type: 'channel',
-            common: { name: customName ?? `${type} ${id}` },
+            common: { name: customName ?? translatedComponentLabel(type, id) },
             native: {},
         });
-
-        if (type === 'io') {
-            // Output names aren't known until the first value arrives - see applyIoValue().
-            await this.setObjectNotExistsAsync(`${channelId}.digital`, {
-                type: 'channel',
-                common: { name: 'Digital outputs' },
-                native: {},
-            });
-            await this.setObjectNotExistsAsync(`${channelId}.analog`, {
-                type: 'channel',
-                common: { name: 'Analog outputs' },
-                native: {},
-            });
-            return;
-        }
 
         // extendObjectAsync (not setObjectNotExistsAsync) so a definition change - a fixed unit, a
         // renamed label - reaches objects an earlier adapter version already created, not just
@@ -243,7 +278,7 @@ class Openwb2 extends utils.Adapter {
         for (const field of readFields) {
             await this.extendObjectAsync(`${channelId}.${field.stateId}`, {
                 type: 'state',
-                common: commonFromReadField(field),
+                common: commonFromReadField(field, this.energyUnit()),
                 native: {},
             });
         }
@@ -251,7 +286,7 @@ class Openwb2 extends utils.Adapter {
         if (type === 'chargepoint') {
             await this.setObjectNotExistsAsync(`${channelId}.control`, {
                 type: 'channel',
-                common: { name: 'Control' },
+                common: { name: translated('Control') },
                 native: {},
             });
             for (const field of CHARGEPOINT_CONTROL_FIELDS) {
@@ -273,7 +308,7 @@ class Openwb2 extends utils.Adapter {
         if (type === 'battery') {
             await this.setObjectNotExistsAsync(`${channelId}.control`, {
                 type: 'channel',
-                common: { name: 'Control' },
+                common: { name: translated('Control') },
                 native: {},
             });
             for (const field of BATTERY_CONTROL_FIELDS) {
@@ -295,17 +330,57 @@ class Openwb2 extends utils.Adapter {
     }
 
     /**
-     * Checks whether MqttReader has observed any component IDs not already in the persisted
-     * component table and, if so, adds them as new enabled rows and persists that
-     * (native.componentTable is the single source of truth shared with the admin UI's Components
-     * tab, see componentTable.ts). Persisting a native config change restarts the adapter
-     * instance, which then re-runs onReady and creates objects for the newly added rows - so this
-     * method doesn't create objects or touch this.componentIds itself. No network call is
-     * involved - MqttReader already knows what it's seen from the live connection.
+     * Creates the `<type>.total.*` channel - a system-wide sum across all enabled instances of that
+     * type, not a discoverable device of its own (see TOTAL_FIELDS_BY_TYPE's docs).
      *
-     * Additive only: an ID no longer observed is logged, never removed from the table, since a
-     * device being temporarily offline shouldn't destroy historical states/objects without
-     * explicit confirmation - the same principle the admin UI's Components tab follows.
+     * @param type - which total to create
+     */
+    private async createTotalObjects(type: TotalType): Promise<void> {
+        const channelId = `${type}.total`;
+        await this.extendObjectAsync(channelId, {
+            type: 'channel',
+            common: { name: translated(`Total ${type}`) },
+            native: {},
+        });
+        for (const field of TOTAL_FIELDS_BY_TYPE[type]) {
+            await this.extendObjectAsync(`${channelId}.${field.stateId}`, {
+                type: 'state',
+                common: commonFromReadField(field, this.energyUnit()),
+                native: {},
+            });
+        }
+    }
+
+    /**
+     * Creates the singleton `counter.homeConsumption.*` channel, always, like `info.*`. Nested
+     * under `counter` to match the real `openWB/simpleAPI/counter/set/...` wire segment. Stays
+     * `null` if openWB isn't computing this.
+     */
+    private async createHomeConsumptionObjects(): Promise<void> {
+        await this.extendObjectAsync('counter.homeConsumption', {
+            type: 'channel',
+            common: { name: translated('Home consumption (estimated)') },
+            native: {},
+        });
+        for (const field of HOME_CONSUMPTION_READ_FIELDS) {
+            await this.extendObjectAsync(`counter.homeConsumption.${field.stateId}`, {
+                type: 'state',
+                common: commonFromReadField(field, this.energyUnit()),
+                native: {},
+            });
+        }
+    }
+
+    /** The instance-wide display unit for Wh-denominated fields - see scaleEnergyValue's docs. */
+    private energyUnit(): EnergyUnit {
+        return this.config.energyUnit === 'kWh' ? 'kWh' : 'Wh';
+    }
+
+    /**
+     * Adds newly-observed component IDs to the persisted table (no network call - MqttReader
+     * already knows what it's seen). Persisting restarts the adapter, which creates objects for the
+     * new rows. Additive only: an ID no longer observed is logged, never removed, since a device
+     * being temporarily offline shouldn't destroy its states without explicit confirmation.
      */
     private async checkForNewComponents(): Promise<void> {
         try {
@@ -350,50 +425,8 @@ class Openwb2 extends utils.Adapter {
     }
 
     /**
-     * IO output names are dynamic (from the user's io module config, not a fixed schema), so
-     * their state objects are created lazily here, the first time each name is observed.
-     *
-     * @param id - io component instance ID
-     * @param outputType - simpleapi.php's write-side type name for this output
-     * @param name - output name, as published by openWB
-     * @param value - current value
-     */
-    private async applyIoValue(
-        id: number,
-        outputType: 'digital_output' | 'analog_output',
-        name: string,
-        value: ioBroker.StateValue,
-    ): Promise<void> {
-        const folder = outputType === 'digital_output' ? 'digital' : 'analog';
-        const stateId = `io.${id}.${folder}.${name}`;
-
-        if (!this.knownIoStates.has(stateId)) {
-            await this.setObjectNotExistsAsync(stateId, {
-                type: 'state',
-                common: {
-                    name,
-                    type: outputType === 'digital_output' ? 'boolean' : 'number',
-                    role: outputType === 'digital_output' ? 'switch' : 'level',
-                    read: true,
-                    write: true,
-                },
-                native: {},
-            });
-            this.controlBindings.set(stateId, {
-                writeParam: 'set_io_output',
-                idParam: 'io_nr',
-                componentId: id,
-                io: { outputName: name, outputType },
-            });
-            this.knownIoStates.add(stateId);
-        }
-
-        await this.setState(stateId, { val: value, ack: true });
-    }
-
-    /**
      * Is called if a subscribed state changes - only non-ack changes on states we created
-     * ourselves (control.* / io.*.digital.* / io.*.analog.*) are forwarded to openWB.
+     * ourselves (control.*) are forwarded to openWB.
      *
      * @param id - State ID
      * @param state - State object
@@ -419,15 +452,7 @@ class Openwb2 extends utils.Adapter {
         const value = binding.writeTransform
             ? binding.writeTransform(state.val)
             : ((state.val as string | number) ?? '');
-        const params: Record<string, string | number> = {};
-
-        if (binding.io) {
-            params.set_io_output = value;
-            params.io_output = binding.io.outputName;
-            params.io_output_type = binding.io.outputType;
-        } else {
-            params[binding.writeParam] = value;
-        }
+        const params: Record<string, string | number> = { [binding.writeParam]: value };
         if (binding.idParam && binding.componentId !== undefined) {
             params[binding.idParam] = binding.componentId;
         }

@@ -1,10 +1,16 @@
 {
     "Add": "Add",
     "Advanced": "Advanced",
+    "Applies to every cumulative energy counter (imported/exported and their daily/monthly/yearly variants)": "Applies to every cumulative energy counter (imported/exported and their daily/monthly/yearly variants)",
+    "Battery": "Battery",
     "Bearer token": "Bearer token",
+    "Chargepoint": "Chargepoint",
     "Components": "Components",
     "Connection": "Connection",
+    "Consumer": "Consumer",
+    "Counter": "Counter",
     "Enabled": "Enabled",
+    "Energy values shown as": "Energy values shown as",
     "Found %s new component(s)": "Found %s new component(s)",
     "HTTP (writes)": "HTTP (writes)",
     "HTTP authentication": "HTTP authentication",
@@ -23,7 +29,7 @@
     "No components configured yet - probe or add one below.": "No components configured yet - probe or add one below.",
     "No new components found": "No new components found",
     "None": "None",
-    "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries, PV inverters and IO modules manually below if you want more than the ID shown in the object tree.": "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries, PV inverters and IO modules manually below if you want more than the ID shown in the object tree.",
+    "PV": "PV",
     "Password": "Password",
     "Probe failed": "Probe failed",
     "Probe now": "Probe now",
@@ -38,5 +44,6 @@
     "Username / password": "Username / password",
     "not currently reported": "not currently reported",
     "openWB has no user interface to set up simpleAPI or MQTT credentials - these only work if you have edited openWB's own config files by hand.": "openWB has no user interface to set up simpleAPI or MQTT credentials - these only work if you have edited openWB's own config files by hand.",
+    "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries and PV inverters manually below if you want more than the ID shown in the object tree.": "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries and PV inverters manually below if you want more than the ID shown in the object tree.",
     "reported": "reported"
 }

@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import type { ReadFieldDef } from './stateDefinitions';
 import {
     CHARGEPOINT_READ_FIELDS,
     CHARGEPOINT_CONTROL_FIELDS,
@@ -7,86 +8,12 @@ import {
     PV_READ_FIELDS,
     CONSUMER_READ_FIELDS,
     BATTERY_CONTROL_FIELDS,
-    extractReadValue,
     coerceFieldValue,
     buildMqttFieldLookup,
     commonFromReadField,
     commonFromWriteField,
+    scaleEnergyValue,
 } from './stateDefinitions';
-
-// A realistic chargepoint_0 payload shaped exactly like ParameterHandler.php's getChargepointAll().
-const SAMPLE_CHARGEPOINT = {
-    power: 0,
-    voltages: [237.79, 0, 0],
-    currents: [0, 0, 0],
-    powers: [0, 0, 0],
-    state_str: 'Nicht bereit',
-    fault_str: 'Kein Fehler',
-    fault_state: 0,
-    imported: 1125.57,
-    exported: 0,
-    daily_imported: 0,
-    daily_exported: 0,
-    phases_in_use: 1,
-    plug_state: false,
-    charge_state: false,
-    pro_soc: 0,
-    soc_timestamp: null,
-    vehicle_id: 3,
-    evse_current: 0,
-    frequency: 0,
-    power_factors: [0, 0, 0],
-    rfid: null,
-    rfid_timestamp: null,
-    config_name: 'Garage',
-    connected_vehicle_name: 'Model 3',
-    charge_template_name: 'Standard',
-    min_current: 6,
-    instant_charging_current: 10,
-    pv_charging_min_current: 6,
-    instant_charging_limit: 'none',
-    instant_charging_amount: 0,
-    instant_charging_soc: 0,
-    max_price_eco: 0,
-    soc: 55,
-    range_charged: 12.5,
-    chargemode: 'pv_charging',
-    manual_lock: false,
-};
-
-describe('extractReadValue', () => {
-    it('reads a plain numeric field', () => {
-        const field = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'power')!;
-        expect(extractReadValue(SAMPLE_CHARGEPOINT, field)).to.equal(0);
-    });
-
-    it('extracts one phase out of an array field', () => {
-        const p1 = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'voltage_p1')!;
-        const p2 = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'voltage_p2')!;
-        expect(extractReadValue(SAMPLE_CHARGEPOINT, p1)).to.equal(237.79);
-        expect(extractReadValue(SAMPLE_CHARGEPOINT, p2)).to.equal(0);
-    });
-
-    it('reads a string field, defaulting null to an empty string', () => {
-        const stateStr = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'stateStr')!;
-        const rfid = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'rfid')!;
-        expect(extractReadValue(SAMPLE_CHARGEPOINT, stateStr)).to.equal('Nicht bereit');
-        expect(extractReadValue(SAMPLE_CHARGEPOINT, rfid)).to.equal('');
-    });
-
-    it('reads a boolean field', () => {
-        const chargeState = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'chargeState')!;
-        expect(extractReadValue({ ...SAMPLE_CHARGEPOINT, charge_state: true }, chargeState)).to.equal(true);
-        expect(extractReadValue(SAMPLE_CHARGEPOINT, chargeState)).to.equal(false);
-    });
-
-    it('keeps pro_soc (chargepoint-reported) and soc (connected vehicle) distinct', () => {
-        const proSoc = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'proSoc')!;
-        const soc = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'soc')!;
-        expect(extractReadValue(SAMPLE_CHARGEPOINT, proSoc)).to.equal(0);
-        expect(extractReadValue(SAMPLE_CHARGEPOINT, soc)).to.equal(55);
-    });
-});
 
 describe('coerceFieldValue', () => {
     it('coerces to a number, defaulting non-finite to 0', () => {
@@ -113,20 +40,76 @@ describe('buildMqttFieldLookup', () => {
         const lookup = buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS);
         expect(lookup.get('power')?.stateId).to.equal('power');
         expect(lookup.get('voltages/1')?.stateId).to.equal('voltage_p1');
-        // chargemode's flat-mirror mqttField is the same name, not the sourceField-default path
         expect(lookup.get('chargemode')?.stateId).to.equal('chargemode');
     });
 
     it('omits fields with no mqttField (no live MQTT equivalent found)', () => {
+        const withoutMqtt: ReadFieldDef = {
+            stateId: 'noMqttField',
+            name: { en: 'No MQTT field' },
+            type: 'string',
+            role: 'text',
+            mqttField: undefined,
+        };
+        const lookup = buildMqttFieldLookup([withoutMqtt]);
+        expect(lookup.size).to.equal(0);
+    });
+
+    it('scales maxPriceEco from EUR/Wh (wire) to ct/kWh (displayed), matching the writable control', () => {
+        const field = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'maxPriceEco')!;
+        expect(field.unit).to.equal('ct/kWh');
+        expect(field.fromMqtt!(0.0002)).to.equal(20);
+    });
+
+    it('maps pvChargingMinCurrent to the simpleAPI-published minimal_permanent_current topic', () => {
+        // Confirmed against simpleAPI_mqtt.py's _publish_charge_template_read_topics(): it
+        // republishes chargemode.pv_charging.min_current under "minimal_permanent_current"
+        // (matching the writable pvChargingMinCurrent control's naming), not
+        // "pv_charging_min_current".
         const lookup = buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS);
-        const chargeTemplateName = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'chargeTemplateName')!;
-        expect(chargeTemplateName.mqttField).to.be.undefined;
-        expect([...lookup.values()]).to.not.include(chargeTemplateName);
+        expect(lookup.get('minimal_permanent_current')?.stateId).to.equal('pvChargingMinCurrent');
+    });
+
+    it('has no field at all for minCurrent, evseCurrent, evseSignaling, maxEvseCurrent or vehicleId', () => {
+        // minCurrent: no topic of its own anywhere, inside or outside openWB/simpleAPI - PHP derives
+        // it by branching on the active chargemode. The other four are confirmed-live, mapped
+        // fields that were dropped as genuinely not needed, not because they're unavailable.
+        const removedStateIds = ['minCurrent', 'evseCurrent', 'evseSignaling', 'maxEvseCurrent', 'vehicleId'];
+        const presentStateIds = CHARGEPOINT_READ_FIELDS.map(f => f.stateId);
+        for (const stateId of removedStateIds) {
+            expect(presentStateIds).to.not.include(stateId);
+        }
+    });
+
+    it('maps chargeTemplateName/instantChargingCurrent to the set/charge_template sub-tree, confirmed live under openWB/simpleAPI', () => {
+        const lookup = buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS);
+        expect(lookup.get('set/charge_template/name')?.stateId).to.equal('chargeTemplateName');
+        expect(lookup.get('set/charge_template/chargemode/instant_charging/current')?.stateId).to.equal(
+            'instantChargingCurrent',
+        );
+    });
+
+    it('maps pvChargingLimit/Amount/Soc to the not-yet-upstream simpleAPI field names', () => {
+        // Not on mainline openWB/core yet - see CHARGEPOINT_READ_FIELDS' comment above these
+        // entries. Same field names the writable pvChargingLimit/Amount/Soc controls' upstream
+        // write support assumes will land.
+        const lookup = buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS);
+        expect(lookup.get('pv_charging_limit')?.stateId).to.equal('pvChargingLimit');
+        expect(lookup.get('pv_charging_limit_amount')?.stateId).to.equal('pvChargingAmount');
+        expect(lookup.get('pv_charging_limit_soc')?.stateId).to.equal('pvChargingSoc');
     });
 
     it('maps configName to the config topic, not the flat get/ mirror', () => {
         const lookup = buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS);
         expect(lookup.get('config/name')?.stateId).to.equal('configName');
+    });
+
+    it('maps soc/socTimestamp to the "soc.*" sub-object alias, not the flat bare fields (which read empty live)', () => {
+        const lookup = buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS);
+        expect(lookup.get('soc/soc')?.stateId).to.equal('soc');
+        expect(lookup.get('soc/timestamp')?.stateId).to.equal('socTimestamp');
+        expect(lookup.has('soc')).to.equal(false);
+        expect(lookup.has('soc_timestamp')).to.equal(false);
     });
 });
 
@@ -154,6 +137,30 @@ describe('field tables', () => {
         });
     }
 
+    it('every chargepoint/counter/battery/pv/consumer cumulative energy field uses literal unit "Wh"', () => {
+        // scaleEnergyValue/commonFromReadField's energyUnit conversion keys off this exact literal
+        // string - a field meant to be converted that used some other casing/spelling would
+        // silently never get scaled.
+        const allFields = [
+            ...CHARGEPOINT_READ_FIELDS,
+            ...COUNTER_READ_FIELDS,
+            ...BATTERY_READ_FIELDS,
+            ...PV_READ_FIELDS,
+            ...CONSUMER_READ_FIELDS,
+        ];
+        const energyFields = allFields.filter(f => f.role === 'value.energy');
+        expect(energyFields.length).to.be.greaterThan(0);
+        for (const field of energyFields) {
+            // instantChargingAmount/pvChargingAmount are value.energy but natively kWh, not Wh -
+            // they're a configured limit, not a cumulative wire meter, and must NOT be scaled.
+            if (field.stateId === 'instantChargingAmount' || field.stateId === 'pvChargingAmount') {
+                expect(field.unit).to.equal('kWh');
+            } else {
+                expect(field.unit, field.stateId).to.equal('Wh');
+            }
+        }
+    });
+
     it('chargepoint control fields all target chargepoint_nr and produce writable commons', () => {
         for (const field of CHARGEPOINT_CONTROL_FIELDS) {
             expect(field.idParam).to.equal('chargepoint_nr');
@@ -171,5 +178,47 @@ describe('field tables', () => {
         const field = CHARGEPOINT_CONTROL_FIELDS.find(f => f.stateId === 'chargepointLock')!;
         expect(field.writeTransform!(true)).to.equal(1);
         expect(field.writeTransform!(false)).to.equal(0);
+    });
+});
+
+describe('scaleEnergyValue', () => {
+    const whField = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'imported')!;
+    const nonEnergyField = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'power')!;
+
+    it('leaves the value untouched when energyUnit is Wh (the default)', () => {
+        expect(scaleEnergyValue(whField, 12345, 'Wh')).to.equal(12345);
+    });
+
+    it('converts to kWh and rounds to 2 decimal places when energyUnit is kWh', () => {
+        expect(scaleEnergyValue(whField, 12345, 'kWh')).to.equal(12.35);
+        expect(scaleEnergyValue(whField, 1000, 'kWh')).to.equal(1);
+        expect(scaleEnergyValue(whField, 0, 'kWh')).to.equal(0);
+    });
+
+    it('leaves non-Wh fields untouched regardless of energyUnit', () => {
+        expect(scaleEnergyValue(nonEnergyField, 2300, 'kWh')).to.equal(2300);
+    });
+
+    it('leaves non-numeric values untouched (null/undefined/string)', () => {
+        expect(scaleEnergyValue(whField, null, 'kWh')).to.equal(null);
+        expect(scaleEnergyValue(whField, undefined as unknown as null, 'kWh')).to.equal(undefined);
+    });
+});
+
+describe('commonFromReadField energyUnit handling', () => {
+    const whField = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'imported')!;
+
+    it('defaults to the field\'s native "Wh" unit when energyUnit is omitted', () => {
+        expect(commonFromReadField(whField).unit).to.equal('Wh');
+    });
+
+    it('overrides the unit to "kWh" when energyUnit is "kWh"', () => {
+        expect(commonFromReadField(whField, 'kWh').unit).to.equal('kWh');
+    });
+
+    it('never changes a field whose native unit is not "Wh" (e.g. instantChargingAmount, kWh already)', () => {
+        const kwhField = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'instantChargingAmount')!;
+        expect(commonFromReadField(kwhField, 'kWh').unit).to.equal('kWh');
+        expect(commonFromReadField(kwhField, 'Wh').unit).to.equal('kWh');
     });
 });

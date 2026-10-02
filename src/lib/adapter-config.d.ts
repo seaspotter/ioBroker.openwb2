@@ -44,6 +44,15 @@ declare global {
              * the background rediscovery timer when it finds IDs not already present.
              */
             componentTable: string;
+            /**
+             * Instance-wide display unit for every Wh-denominated field (cumulative imported/exported
+             * energy and their daily/monthly/yearly variants, across every component type) - see
+             * stateDefinitions.ts's scaleEnergyValue. The wire value is always Wh; "kWh" divides by
+             * 1000 and rounds to 2 decimal places for display, matching openWB's own convention for
+             * fields that are natively kWh (instantChargingAmount/pvChargingAmount) - those are
+             * unaffected either way, since they're not Wh on the wire to begin with.
+             */
+            energyUnit: 'Wh' | 'kWh';
         }
     }
 }

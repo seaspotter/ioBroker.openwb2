@@ -33,7 +33,7 @@ describe('normalizeMqttValue', () => {
         expect(normalizeMqttValue('Renault Megane')).to.equal('Renault Megane');
     });
 
-    it('parses a JSON object payload (e.g. io digital_output maps)', () => {
+    it('parses a JSON object payload', () => {
         expect(normalizeMqttValue('{"LED1": false, "LED2": false}')).to.deep.equal({ LED1: false, LED2: false });
     });
 

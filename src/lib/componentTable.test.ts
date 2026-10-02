@@ -89,7 +89,6 @@ describe('mergeDiscovered', () => {
             battery: [],
             pv: [],
             consumer: [],
-            io: [],
         });
 
         expect(rows).to.have.deep.members([
@@ -108,7 +107,6 @@ describe('mergeDiscovered', () => {
             battery: [],
             pv: [],
             consumer: [],
-            io: [],
         });
 
         expect(rows).to.deep.equal([{ type: 'chargepoint', id: 0, enabled: false }]);
@@ -127,7 +125,6 @@ describe('mergeDiscovered', () => {
             battery: [],
             pv: [],
             consumer: [],
-            io: [],
         });
 
         expect(rows).to.deep.equal(existing);

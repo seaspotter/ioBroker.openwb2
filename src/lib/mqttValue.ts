@@ -1,8 +1,7 @@
 /**
- * Normalizes a raw MQTT payload string from `openWB/simpleAPI/#` (or the raw `openWB/io/#`
- * namespace) into a JS value. Verified against a real device's actual wire values (read-only
- * `mosquitto_sub` capture, not guessed): value encoding there is inconsistent, not uniformly
- * JSON -
+ * Normalizes a raw MQTT payload string from `openWB/simpleAPI/#` into a JS value. Verified against
+ * a real device's actual wire values (read-only `mosquitto_sub` capture, not guessed): value
+ * encoding there is inconsistent, not uniformly JSON -
  *   - numbers and `null` are plain and valid JSON as-is
  *   - some strings are properly JSON-encoded, e.g. `"Kein Fehler."` (with quotes)
  *   - other strings arrive bare/unquoted, e.g. `pv_charging`, `km`, even `Renault Megane` (a bare

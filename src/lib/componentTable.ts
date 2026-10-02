@@ -1,7 +1,7 @@
 /*
  * The persisted, human-editable record of which component IDs are known and enabled - the single
- * source of truth behind both the admin UI's Components tab (admin/src/components/ComponentsTab.tsx)
- * and the runtime discovery fallback (discovery.ts). Stored as JSON in native.componentTable.
+ * source of truth behind the admin UI's Components tab (admin/src/components/ComponentsTab.tsx) and
+ * which objects main.ts creates at startup. Stored as JSON in native.componentTable.
  *
  * This module has no dependency on @iobroker/adapter-core so it can be imported from the admin
  * React bundle as well as from the backend (see admin/tsconfig.json's include of this file's
@@ -17,8 +17,8 @@ export interface ComponentTableRow {
     /**
      * User-supplied display name, used as the component's channel name in the object tree.
      * openWB only exposes a configured name over MQTT for chargepoints (config/name, mirrored
-     * under openWB/simpleAPI/#) - counter/battery/pv/io have no name anywhere in that namespace,
-     * so this is the only way to get a human-readable name for those types.
+     * under openWB/simpleAPI/#) - counter/battery/pv/consumer have no name anywhere in that
+     * namespace, so this is the only way to get a human-readable name for those types.
      */
     name?: string;
 }
@@ -69,13 +69,12 @@ export function serializeComponentTable(rows: ComponentTableRow[]): string {
 }
 
 /**
- * Builds the enabled-only ComponentIds the poll planner and object creation need, from the
- * table's current rows.
+ * Builds the enabled-only ComponentIds object creation needs, from the table's current rows.
  *
  * @param rows - parsed component table
  */
 export function enabledIdsByType(rows: ComponentTableRow[]): ComponentIds {
-    const ids: ComponentIds = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [], io: [] };
+    const ids: ComponentIds = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] };
     for (const row of rows) {
         if (row.enabled) {
             ids[row.type].push(row.id);
@@ -102,7 +101,7 @@ export function enabledIdsByType(rows: ComponentTableRow[]): ComponentIds {
  * choice, ticked in the Components tab and confirmed with Save.
  *
  * @param rows - existing table rows
- * @param discovered - freshly discovered component IDs, e.g. from a live list_components probe
+ * @param discovered - freshly discovered component IDs, e.g. from MqttReader.getObservedIds()
  */
 export function mergeDiscovered(
     rows: ComponentTableRow[],

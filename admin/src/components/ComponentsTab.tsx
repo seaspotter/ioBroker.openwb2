@@ -19,7 +19,16 @@ import {
     mergeDiscovered,
     type ComponentTableRow,
 } from '../../../src/lib/componentTable';
-import { asNumber } from '../nativeUtils';
+import { asNumber, asString } from '../nativeUtils';
+
+/** Display labels for ComponentType - kept distinct from the raw lowercase values, which stay untranslated since they double as the real object-id segment. */
+const TYPE_LABELS: Record<ComponentType, string> = {
+    chargepoint: 'Chargepoint',
+    counter: 'Counter',
+    battery: 'Battery',
+    pv: 'PV',
+    consumer: 'Consumer',
+};
 
 export interface ComponentsTabProps {
     native: Record<string, unknown>;
@@ -146,7 +155,7 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                 </div>
                 <div style={{ marginBottom: 16, opacity: 0.7, fontSize: 13 }}>
                     {I18n.t(
-                        'openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries, PV inverters and IO modules manually below if you want more than the ID shown in the object tree.',
+                        'openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries and PV inverters manually below if you want more than the ID shown in the object tree.',
                     )}
                 </div>
 
@@ -172,7 +181,7 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                                             onChange={() => this.toggleRow(index)}
                                         />
                                     </TableCell>
-                                    <TableCell>{row.type}</TableCell>
+                                    <TableCell>{I18n.t(TYPE_LABELS[row.type])}</TableCell>
                                     <TableCell>{row.id}</TableCell>
                                     <TableCell>
                                         <TextField
@@ -225,7 +234,7 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                                 key={type}
                                 value={type}
                             >
-                                {type}
+                                {I18n.t(TYPE_LABELS[type])}
                             </MenuItem>
                         ))}
                     </TextField>
@@ -252,10 +261,27 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
                         )}
                         type="number"
                         style={{ minWidth: 300 }}
-                        value={asNumber(this.props.native.discoveryIntervalMin, 1440)}
+                        value={asNumber(this.props.native.discoveryIntervalMin, 0)}
                         onChange={e => this.props.onChange('discoveryIntervalMin', Number(e.target.value))}
                         margin="normal"
                     />
+                </div>
+
+                <div style={{ marginTop: 32, borderTop: '1px solid #E2E5EA', paddingTop: 16 }}>
+                    <TextField
+                        select
+                        label={I18n.t('Energy values shown as')}
+                        helperText={I18n.t(
+                            'Applies to every cumulative energy counter (imported/exported and their daily/monthly/yearly variants)',
+                        )}
+                        style={{ minWidth: 160 }}
+                        value={asString(this.props.native.energyUnit, 'Wh')}
+                        onChange={e => this.props.onChange('energyUnit', e.target.value)}
+                        margin="normal"
+                    >
+                        <MenuItem value="Wh">Wh</MenuItem>
+                        <MenuItem value="kWh">kWh</MenuItem>
+                    </TextField>
                 </div>
             </div>
         );

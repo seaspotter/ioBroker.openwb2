@@ -31,12 +31,11 @@ export class SimpleApiClient {
     public constructor(private readonly log: ioBroker.Log) {}
 
     /**
-     * Issues a GET request for one or more read parameters (see stateDefinitions.ts /
-     * discovery.ts for which params exist). simpleapi.php merges $_GET and $_POST into one
-     * params array server-side, but reads are conventionally sent as GET.
+     * Issues a GET request for one or more read parameters. simpleapi.php merges $_GET and $_POST
+     * into one params array server-side, but reads are conventionally sent as GET.
      *
      * @param cfg - connection details
-     * @param params - simpleapi.php read parameters, e.g. `{get_chargepoint_all: 0, battery: 0}`
+     * @param params - simpleapi.php read parameters, e.g. `{get_lastlivevaluesjson: 1}`
      */
     public async read(
         cfg: SimpleApiConnectionConfig,

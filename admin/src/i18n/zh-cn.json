@@ -1,10 +1,16 @@
 {
     "Add": "添加",
     "Advanced": "先进的",
+    "Applies to every cumulative energy counter (imported/exported and their daily/monthly/yearly variants)": "适用于每个累积能量计数器（导入/导出及其每日/每月/每年变体）",
+    "Battery": "电池",
     "Bearer token": "不记名令牌",
+    "Chargepoint": "充电桩",
     "Components": "成分",
     "Connection": "联系",
+    "Consumer": "用电设备",
+    "Counter": "电表",
     "Enabled": "启用",
+    "Energy values shown as": "能量值显示为",
     "Found %s new component(s)": "发现 %s 个新组件",
     "HTTP (writes)": "HTTP（写入）",
     "HTTP authentication": "HTTP认证",
@@ -23,6 +29,7 @@
     "No components configured yet - probe or add one below.": "尚未配置任何组件 - 探测或在下面添加一个。",
     "No new components found": "未发现新组件",
     "None": "没有任何",
+    "PV": "光伏",
     "Password": "密码",
     "Probe failed": "探测失败",
     "Probe now": "立即探测",
@@ -37,6 +44,6 @@
     "Username / password": "用户名/密码",
     "not currently reported": "目前尚未报道",
     "openWB has no user interface to set up simpleAPI or MQTT credentials - these only work if you have edited openWB's own config files by hand.": "openWB 没有用于设置 simpleAPI 或 MQTT 凭证的用户界面 - 这些仅在您手动编辑 openWB 自己的配置文件时才有效。",
-    "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries, PV inverters and IO modules manually below if you want more than the ID shown in the object tree.": "openWB 仅通过 MQTT 报告充电点的已配置设备名称 - 如果您想要的不仅仅是对象树中显示的 ID，请在下面手动报告名称计数器、电池、PV 逆变器和 IO 模块。",
+    "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries and PV inverters manually below if you want more than the ID shown in the object tree.": "openWB 仅通过 MQTT 报告充电点的已配置设备名称 - 如果您想要的不仅仅是对象树中显示的 ID，请在下面手动报告名称计数器、电池和光伏逆变器。",
     "reported": "报道"
 }

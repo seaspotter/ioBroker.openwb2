@@ -1,10 +1,16 @@
 {
     "Add": "Toevoegen",
     "Advanced": "Geavanceerd",
+    "Applies to every cumulative energy counter (imported/exported and their daily/monthly/yearly variants)": "Geldt voor elke cumulatieve energieteller (geïmporteerd/geëxporteerd en hun dagelijkse/maandelijkse/jaarlijkse varianten)",
+    "Battery": "Batterij",
     "Bearer token": "Token aan toonder",
+    "Chargepoint": "Laadpunt",
     "Components": "Componenten",
     "Connection": "Verbinding",
+    "Consumer": "Verbruiker",
+    "Counter": "Teller",
     "Enabled": "Ingeschakeld",
+    "Energy values shown as": "Energiewaarden weergegeven als",
     "Found %s new component(s)": "%s nieuwe component(en) gevonden",
     "HTTP (writes)": "HTTP (schrijft)",
     "HTTP authentication": "HTTP-authenticatie",
@@ -23,6 +29,7 @@
     "No components configured yet - probe or add one below.": "Er zijn nog geen componenten geconfigureerd. Controleer of voeg er hieronder één toe.",
     "No new components found": "Geen nieuwe componenten gevonden",
     "None": "Geen",
+    "PV": "PV",
     "Password": "Wachtwoord",
     "Probe failed": "Sonde mislukt",
     "Probe now": "Sonde nu",
@@ -37,6 +44,6 @@
     "Username / password": "Gebruikersnaam / wachtwoord",
     "not currently reported": "momenteel niet gerapporteerd",
     "openWB has no user interface to set up simpleAPI or MQTT credentials - these only work if you have edited openWB's own config files by hand.": "openWB heeft geen gebruikersinterface om simpleAPI- of MQTT-inloggegevens in te stellen - deze werken alleen als u de eigen configuratiebestanden van openWB met de hand hebt bewerkt.",
-    "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries, PV inverters and IO modules manually below if you want more than the ID shown in the object tree.": "openWB rapporteert alleen een geconfigureerde apparaatnaam via MQTT voor laadpunten - naamtellers, batterijen, PV-omvormers en IO-modules hieronder handmatig als u meer wilt dan de ID die in de objectboom wordt weergegeven.",
+    "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries and PV inverters manually below if you want more than the ID shown in the object tree.": "openWB rapporteert alleen een geconfigureerde apparaatnaam via MQTT voor laadpunten - naamtellers, batterijen en PV-omvormers handmatig hieronder als u meer wilt dan de ID die in de objectboom wordt weergegeven.",
     "reported": "gemeld"
 }

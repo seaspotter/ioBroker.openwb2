@@ -3,16 +3,19 @@ import { COMPONENT_TYPES, type ComponentIds, type ComponentType } from './consta
 import { normalizeMqttValue } from './mqttValue';
 import {
     SIMPLE_API_SUBSCRIBE_FILTERS,
-    IO_SUBSCRIBE_FILTER,
     REVISION_TOPIC,
     parseSimpleApiTopic,
-    parseIoTopic,
+    parseTotalTopic,
+    parseHomeConsumptionTopic,
 } from './mqttTopics';
 import {
     CHARGEPOINT_READ_FIELDS,
     COUNTER_READ_FIELDS,
     BATTERY_READ_FIELDS,
     PV_READ_FIELDS,
+    PV_TOTAL_READ_FIELDS,
+    CHARGEPOINT_TOTAL_READ_FIELDS,
+    HOME_CONSUMPTION_READ_FIELDS,
     CONSUMER_READ_FIELDS,
     buildMqttFieldLookup,
     buildControlLiveLookup,
@@ -63,9 +66,7 @@ export function testMqttConnection(
     });
 }
 
-type SimpleApiType = Exclude<ComponentType, 'io'>;
-
-const MQTT_FIELD_LOOKUP: Record<SimpleApiType, Map<string, ReadFieldDef>> = {
+const MQTT_FIELD_LOOKUP: Record<ComponentType, Map<string, ReadFieldDef>> = {
     chargepoint: buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS),
     counter: buildMqttFieldLookup(COUNTER_READ_FIELDS),
     battery: buildMqttFieldLookup(BATTERY_READ_FIELDS),
@@ -76,31 +77,36 @@ const MQTT_FIELD_LOOKUP: Record<SimpleApiType, Map<string, ReadFieldDef>> = {
 /** Only chargepoint has any control fields with a live MQTT source - see ControlLiveSource's docs. */
 const CONTROL_LIVE_LOOKUP = buildControlLiveLookup();
 
-export type ValueListener = (type: SimpleApiType, id: number, field: ReadFieldDef, value: ioBroker.StateValue) => void;
+type TotalType = 'pv' | 'chargepoint';
+
+/** System-wide sums across all instances of a type - see PV_TOTAL_READ_FIELDS' docs. */
+const TOTAL_FIELD_LOOKUP: Record<TotalType, Map<string, ReadFieldDef>> = {
+    pv: buildMqttFieldLookup(PV_TOTAL_READ_FIELDS),
+    chargepoint: buildMqttFieldLookup(CHARGEPOINT_TOTAL_READ_FIELDS),
+};
+
+/** openWB's global virtual home-consumption counter - see HOME_CONSUMPTION_READ_FIELDS' docs. */
+const HOME_CONSUMPTION_FIELD_LOOKUP = buildMqttFieldLookup(HOME_CONSUMPTION_READ_FIELDS);
+
+export type ValueListener = (type: ComponentType, id: number, field: ReadFieldDef, value: ioBroker.StateValue) => void;
 export type ControlValueListener = (id: number, controlStateId: string, value: ioBroker.StateValue) => void;
-export type IoValueListener = (
-    id: number,
-    outputType: 'digital_output' | 'analog_output',
-    name: string,
-    value: ioBroker.StateValue,
-) => void;
+export type TotalValueListener = (type: TotalType, field: ReadFieldDef, value: ioBroker.StateValue) => void;
+export type HomeConsumptionValueListener = (field: ReadFieldDef, value: ioBroker.StateValue) => void;
 export type ConnectionListener = (connected: boolean) => void;
 
 /**
- * Live MQTT read path: one persistent connection, subscribed to `openWB/simpleAPI/#` (per type)
- * and the raw `openWB/io/states/#` namespace (which `simpleAPI_mqtt.py` doesn't mirror - see
- * mqttTopics.ts). Replaces the old HTTP poll cycle entirely for reads; writes stay on
- * SimpleApiClient regardless.
+ * Live MQTT read path: one persistent connection, subscribed to `openWB/simpleAPI/#` (per type).
+ * Writes stay on SimpleApiClient/HTTP regardless - the two are independent.
  *
  * Also tracks every `(type, id)` it has ever seen a message for, indefinitely, so discovery
- * (`getObservedIds`) is free/instant - no separate probe request needed, unlike the old HTTP
- * `list_components` call this replaces.
+ * (`getObservedIds`) is free/instant - no separate probe request needed.
  */
 export class MqttReader {
     private client: MqttClient | undefined;
     private readonly valueListeners = new Set<ValueListener>();
     private readonly controlValueListeners = new Set<ControlValueListener>();
-    private readonly ioValueListeners = new Set<IoValueListener>();
+    private readonly totalValueListeners = new Set<TotalValueListener>();
+    private readonly homeConsumptionValueListeners = new Set<HomeConsumptionValueListener>();
     private readonly connectionListeners = new Set<ConnectionListener>();
     private readonly observed: Record<ComponentType, Set<number>> = {
         chargepoint: new Set(),
@@ -108,7 +114,6 @@ export class MqttReader {
         battery: new Set(),
         pv: new Set(),
         consumer: new Set(),
-        io: new Set(),
     };
 
     public constructor(private readonly log: ioBroker.Log) {}
@@ -125,7 +130,7 @@ export class MqttReader {
 
         this.client.on('connect', () => {
             this.log.info(`Connected to MQTT broker at ${cfg.host}:${cfg.port}`);
-            const filters = [...SIMPLE_API_SUBSCRIBE_FILTERS, IO_SUBSCRIBE_FILTER, REVISION_TOPIC];
+            const filters = [...SIMPLE_API_SUBSCRIBE_FILTERS, REVISION_TOPIC];
             this.client?.subscribe(filters, err => {
                 if (err) {
                     this.log.warn(`Failed to subscribe to MQTT topics: ${err.message}`);
@@ -150,8 +155,14 @@ export class MqttReader {
         this.controlValueListeners.add(cb);
     }
 
-    public onIoValue(cb: IoValueListener): void {
-        this.ioValueListeners.add(cb);
+    /** Fires for the system-wide pv/chargepoint totals - see PV_TOTAL_READ_FIELDS' docs. */
+    public onTotalValue(cb: TotalValueListener): void {
+        this.totalValueListeners.add(cb);
+    }
+
+    /** Fires for openWB's global virtual home-consumption counter - see HOME_CONSUMPTION_READ_FIELDS' docs. */
+    public onHomeConsumptionValue(cb: HomeConsumptionValueListener): void {
+        this.homeConsumptionValueListeners.add(cb);
     }
 
     public onConnectionChange(cb: ConnectionListener): void {
@@ -166,7 +177,7 @@ export class MqttReader {
 
     /** Every `(type, id)` ever observed, regardless of whether it's in the enabled component table. */
     public getObservedIds(): ComponentIds {
-        const ids = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [], io: [] } as ComponentIds;
+        const ids = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] } as ComponentIds;
         for (const type of COMPONENT_TYPES) {
             ids[type] = [...this.observed[type]].sort((a, b) => a - b);
         }
@@ -184,14 +195,11 @@ export class MqttReader {
             return;
         }
 
-        const io = parseIoTopic(topic);
-        if (io) {
-            this.handleIoMessage(io.id, io.fieldPath, payload);
-            return;
-        }
-
         const parsed = parseSimpleApiTopic(topic);
         if (!parsed) {
+            // "total"/"set" aren't numeric ids, so parseSimpleApiTopic never matches these - they
+            // need their own id-less routing instead.
+            this.handleTotalOrHomeConsumptionMessage(topic, payload);
             return;
         }
 
@@ -200,7 +208,8 @@ export class MqttReader {
 
         const field = MQTT_FIELD_LOOKUP[parsed.type].get(parsed.fieldPath);
         if (field) {
-            const value = coerceFieldValue(normalized, field.type);
+            const raw = field.fromMqtt ? field.fromMqtt(normalized) : normalized;
+            const value = coerceFieldValue(raw, field.type);
             for (const listener of this.valueListeners) {
                 listener(parsed.type, parsed.id, field, value);
             }
@@ -220,23 +229,32 @@ export class MqttReader {
         // we don't route - not an error either way.
     }
 
-    private handleIoMessage(id: number, fieldPath: string, payload: string): void {
-        this.observed.io.add(id);
+    /** Routes the two id-less topic shapes parseSimpleApiTopic can never match - see their own parsers' docs. */
+    private handleTotalOrHomeConsumptionMessage(topic: string, payload: string): void {
+        const normalized = normalizeMqttValue(payload);
 
-        if (fieldPath !== 'digital_output' && fieldPath !== 'analog_output') {
-            return; // digital_input, fault_str, etc. - not writable outputs, nothing to route
-        }
-        const outputType = fieldPath;
-        const valueType = outputType === 'digital_output' ? 'boolean' : 'number';
-
-        const parsed = normalizeMqttValue(payload);
-        if (!parsed || typeof parsed !== 'object') {
+        const total = parseTotalTopic(topic);
+        if (total) {
+            const field = TOTAL_FIELD_LOOKUP[total.type].get(total.fieldPath);
+            if (field) {
+                const raw = field.fromMqtt ? field.fromMqtt(normalized) : normalized;
+                const value = coerceFieldValue(raw, field.type);
+                for (const listener of this.totalValueListeners) {
+                    listener(total.type, field, value);
+                }
+            }
             return;
         }
-        for (const [name, rawValue] of Object.entries(parsed as Record<string, unknown>)) {
-            const value = coerceFieldValue(rawValue, valueType);
-            for (const listener of this.ioValueListeners) {
-                listener(id, outputType, name, value);
+
+        const homeConsumption = parseHomeConsumptionTopic(topic);
+        if (homeConsumption) {
+            const field = HOME_CONSUMPTION_FIELD_LOOKUP.get(homeConsumption.fieldPath);
+            if (field) {
+                const raw = field.fromMqtt ? field.fromMqtt(normalized) : normalized;
+                const value = coerceFieldValue(raw, field.type);
+                for (const listener of this.homeConsumptionValueListeners) {
+                    listener(field, value);
+                }
             }
         }
     }

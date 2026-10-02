@@ -1,10 +1,16 @@
 {
     "Add": "додати",
     "Advanced": "Просунутий",
+    "Applies to every cumulative energy counter (imported/exported and their daily/monthly/yearly variants)": "Застосовується до кожного кумулятивного лічильника енергії (імпортованого/експортованого та їх щоденних/місячних/річних варіантів)",
+    "Battery": "Батарея",
     "Bearer token": "Токен на пред'явника",
+    "Chargepoint": "Точка зарядки",
     "Components": "компоненти",
     "Connection": "Підключення",
+    "Consumer": "Споживач",
+    "Counter": "Лічильник",
     "Enabled": "Увімкнено",
+    "Energy values shown as": "Значення енергії показано як",
     "Found %s new component(s)": "Знайдено %s нових компонентів",
     "HTTP (writes)": "HTTP (запис)",
     "HTTP authentication": "Аутентифікація HTTP",
@@ -23,6 +29,7 @@
     "No components configured yet - probe or add one below.": "Компонентів ще не налаштовано – спробуйте або додайте один нижче.",
     "No new components found": "Нових компонентів не знайдено",
     "None": "Жодного",
+    "PV": "СЕС",
     "Password": "Пароль",
     "Probe failed": "Збій зонду",
     "Probe now": "Зонд зараз",
@@ -37,6 +44,6 @@
     "Username / password": "Ім'я користувача / пароль",
     "not currently reported": "наразі не повідомляється",
     "openWB has no user interface to set up simpleAPI or MQTT credentials - these only work if you have edited openWB's own config files by hand.": "openWB не має інтерфейсу користувача для налаштування облікових даних SimpleAPI або MQTT — вони працюють, лише якщо ви редагували власні конфігураційні файли openWB вручну.",
-    "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries, PV inverters and IO modules manually below if you want more than the ID shown in the object tree.": "openWB повідомляє лише налаштовану назву пристрою через MQTT для зарядних точок - лічильники імен, батареї, фотоелектричні інвертори та модулі вводу-виводу вручну нижче, якщо вам потрібно більше, ніж ідентифікатор, показаний у дереві об’єктів.",
+    "openWB only reports a configured device name over MQTT for chargepoints - name counters, batteries and PV inverters manually below if you want more than the ID shown in the object tree.": "openWB повідомляє лише налаштоване ім’я пристрою через MQTT для точок заряджання – лічильники імен, акумулятори та фотоелектричні інвертори вручну нижче, якщо вам потрібно більше, ніж ідентифікатор, показаний у дереві об’єктів.",
     "reported": "повідомили"
 }

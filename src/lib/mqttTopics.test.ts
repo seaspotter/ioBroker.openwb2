@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { parseSimpleApiTopic, parseIoTopic, SIMPLE_API_SUBSCRIBE_FILTERS, IO_SUBSCRIBE_FILTER } from './mqttTopics';
+import { parseSimpleApiTopic, SIMPLE_API_SUBSCRIBE_FILTERS } from './mqttTopics';
 
 // Every topic below was seen verbatim in a read-only mosquitto_sub capture against a real openWB
 // device (see project memory) - not guessed.
@@ -60,19 +60,6 @@ describe('parseSimpleApiTopic', () => {
     });
 });
 
-describe('parseIoTopic', () => {
-    it('parses a raw io state topic', () => {
-        expect(parseIoTopic('openWB/io/states/0/get/digital_output')).to.deep.equal({
-            id: 0,
-            fieldPath: 'digital_output',
-        });
-    });
-
-    it('does not match a non-io topic', () => {
-        expect(parseIoTopic('openWB/simpleAPI/chargepoint/4/get/power')).to.be.undefined;
-    });
-});
-
 describe('subscribe filters', () => {
     it('has one filter per simpleAPI-backed type, using the wire segment names', () => {
         expect(SIMPLE_API_SUBSCRIBE_FILTERS).to.include('openWB/simpleAPI/chargepoint/+/#');
@@ -80,9 +67,5 @@ describe('subscribe filters', () => {
         expect(SIMPLE_API_SUBSCRIBE_FILTERS).to.include('openWB/simpleAPI/counter/+/#');
         expect(SIMPLE_API_SUBSCRIBE_FILTERS).to.include('openWB/simpleAPI/pv/+/#');
         expect(SIMPLE_API_SUBSCRIBE_FILTERS).to.include('openWB/simpleAPI/consumer/+/#');
-    });
-
-    it('IO uses the raw namespace, not openWB/simpleAPI', () => {
-        expect(IO_SUBSCRIBE_FILTER).to.equal('openWB/io/states/+/get/#');
     });
 });
