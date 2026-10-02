@@ -96,6 +96,7 @@ class Openwb2 extends utils.Adapter {
         const componentRows = parseComponentTable(this.config.componentTable);
         this.componentIds = enabledIdsByType(componentRows);
         await this.removeLegacyChargepointObjects(this.componentIds.chargepoint);
+        await this.removeLegacyConsumerObjects(this.componentIds.consumer);
         this.log.info(
             `Enabled components: ${COMPONENT_TYPES.map(type => `${type}=${this.componentIds[type].length}`).join(', ')}`,
         );
@@ -243,6 +244,18 @@ class Openwb2 extends utils.Adapter {
             for (const path of relativePaths) {
                 await this.delObjectAsync(`chargepoint.${id}.${path}`).catch(() => undefined);
             }
+        }
+    }
+
+    /**
+     * Deletes consumer.<id>.phasesInUse objects left over from an earlier dev build - there is no
+     * live readback for it (see CONSUMER_READ_FIELDS' own comment) - safe no-op if absent.
+     *
+     * @param consumerIds - currently enabled consumer ids
+     */
+    private async removeLegacyConsumerObjects(consumerIds: number[]): Promise<void> {
+        for (const id of consumerIds) {
+            await this.delObjectAsync(`consumer.${id}.phasesInUse`).catch(() => undefined);
         }
     }
 

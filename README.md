@@ -131,6 +131,9 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
   each `<type>.<id>` channel was an orphan with no `<type>` object above it.
 - (SeaSpotter) Fixed `batPowerReserve`/`instantChargingAmount`/`pvChargingAmount` using roles not in
   the ioBroker role catalogue (`level.power`/`level.energy` -> `level`).
+- (SeaSpotter) Fixed `consumer.<id>.chargeState` reading empty - the real device publishes it as
+  `get/state`, not `get/charge_state`. Removed `consumer.<id>.phasesInUse`, confirmed live against a
+  real consumer module to have no live equivalent.
 
 ### 0.3.2 (2026-10-02)
 

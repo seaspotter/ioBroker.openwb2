@@ -561,10 +561,12 @@ export const HOME_CONSUMPTION_READ_FIELDS: ReadFieldDef[] = [
 ];
 
 /*
- * Not live-verified - no consumer module was available to test against. mqttField values are
- * inferred from the same nested get/<field> pattern used by counter/battery/pv, plus the PHP
- * source's own topic layout for usage_type (a separate openWB/consumer/<id>/usage JSON object, not
- * a flattened get/usage_type topic). Worth confirming against a real consumer module.
+ * Live-verified against a real consumer module (IDM heat pump, usage_type "meter_only"), via a raw
+ * MQTT mirror of the broker rather than our own adapter. "Currently active" is published as plain
+ * "get/state", not "get/charge_state" like the naive get/<field> pattern used by counter/battery/pv
+ * would suggest. There is no live "phases in use" readback at all for this type - only
+ * "config/connected_phases" (static wiring count) and "set/phases_to_use" (a commanded value, not a
+ * readback) exist, neither of which means the same thing, so no such field is defined here.
  */
 export const CONSUMER_READ_FIELDS: ReadFieldDef[] = [
     str('usage_type', 'usageType', 'Usage type', 'text', 'usage/type'),
@@ -575,8 +577,7 @@ export const CONSUMER_READ_FIELDS: ReadFieldDef[] = [
     num('imported', 'imported', 'Energy imported', 'value.energy', 'Wh'),
     num('exported', 'exported', 'Energy exported', 'value.energy', 'Wh'),
     num('daily_imported', 'dailyImported', 'Energy imported today', 'value.energy', 'Wh'),
-    num('phases_in_use', 'phasesInUse', 'Phases in use', 'value'),
-    bool('charge_state', 'chargeState', 'Currently active'),
+    bool('charge_state', 'chargeState', 'Currently active', 'indicator', 'state'),
     str('state_str', 'stateStr', 'State'),
     str('fault_str', 'faultStr', 'Fault'),
     num('fault_state', 'faultState', 'Fault state', 'value'),
