@@ -125,6 +125,11 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     ### **WORK IN PROGRESS**
 -->
 
+### 0.3.1 (2026-10-02)
+
+- (SeaSpotter) Fixed `chargepoint.<id>.control`/`battery.<id>.control` channel names never
+  updating on an existing installation.
+
 ### 0.3.0 (2026-10-02)
 
 - (SeaSpotter) Migrated the admin UI to `@iobroker/gui-components` (React 19, MUI 9).
