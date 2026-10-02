@@ -134,6 +134,8 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
 - (SeaSpotter) Fixed `consumer.<id>.chargeState` reading empty - the real device publishes it as
   `get/state`, not `get/charge_state`. Removed `consumer.<id>.phasesInUse`, confirmed live against a
   real consumer module to have no live equivalent.
+- (SeaSpotter) Added `consumer.<id>.linkedCounterId` (which counter this consumer's metering is
+  sourced from) and `consumer.<id>.chargeMode`.
 
 ### 0.3.2 (2026-10-02)
 

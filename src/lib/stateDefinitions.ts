@@ -581,6 +581,10 @@ export const CONSUMER_READ_FIELDS: ReadFieldDef[] = [
     str('state_str', 'stateStr', 'State'),
     str('fault_str', 'faultStr', 'Fault'),
     num('fault_state', 'faultState', 'Fault state', 'value'),
+    // The counter id this consumer's own metering is sourced from, confirmed live (openWB's own
+    // admin UI shows this as the consumer's assigned meter).
+    num('extra_meter', 'linkedCounterId', 'Linked counter ID', 'value'),
+    str('usage_chargemode', 'chargeMode', 'Charge mode', 'text', 'usage/chargemode'),
 ];
 
 /**
