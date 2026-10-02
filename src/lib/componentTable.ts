@@ -87,6 +87,23 @@ export function enabledIdsByType(rows: ComponentTableRow[]): ComponentIds {
 }
 
 /**
+ * Unions two ComponentIds sets, e.g. a persistent MqttReader's already-observed IDs and a
+ * short-lived probe's freshly-collected ones (see probeMqttComponents in mqttReader.ts) - either
+ * source alone might miss an ID the other caught (a persistent connection that's seen it over time
+ * vs. a fresh probe against a not-yet-connected host).
+ *
+ * @param a - first set
+ * @param b - second set
+ */
+export function mergeComponentIds(a: ComponentIds, b: ComponentIds): ComponentIds {
+    const merged: ComponentIds = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] };
+    for (const type of COMPONENT_TYPES) {
+        merged[type] = [...new Set([...a[type], ...b[type]])].sort((x, y) => x - y);
+    }
+    return merged;
+}
+
+/**
  * Merges freshly discovered component IDs into the existing table: adds a new, disabled row for
  * every (type, id) not already present as a row (regardless of that existing row's enabled
  * state), and never touches or removes any existing row. This is the whole answer to "how do we

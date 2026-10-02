@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "openwb2",
-        "version": "0.3.3",
+        "version": "0.3.4",
         "news": {
+            "0.3.4": {
+                "en": "* \"Probe now\" (Components tab) now works immediately on a host you've just typed in, without having to Save first.",
+                "de": "* „Jetzt suchen” (Komponenten-Tab) funktioniert jetzt sofort bei einer gerade eingegebenen Adresse, ohne vorheriges Speichern.",
+                "ru": "* «Проверить сейчас» (вкладка «Компоненты») теперь работает сразу для только что введённого адреса, без необходимости сначала сохранять.",
+                "pt": "* \"Procurar agora\" (separador Componentes) agora funciona imediatamente num endereço recém-introduzido, sem ser necessário Guardar primeiro.",
+                "nl": "* \"Nu zoeken\" (tabblad Componenten) werkt nu direct op een zojuist ingevoerd adres, zonder eerst te hoeven opslaan.",
+                "fr": "* « Rechercher maintenant » (onglet Composants) fonctionne désormais immédiatement sur une adresse qui vient d'être saisie, sans avoir à enregistrer au préalable.",
+                "it": "* \"Cerca ora\" (scheda Componenti) ora funziona immediatamente su un indirizzo appena digitato, senza dover prima salvare.",
+                "es": "* \"Buscar ahora\" (pestaña Componentes) ahora funciona de inmediato con una dirección recién introducida, sin necesidad de guardar antes.",
+                "pl": "* \"Szukaj teraz\" (karta Komponenty) działa teraz od razu dla dopiero co wpisanego adresu, bez konieczności wcześniejszego zapisania.",
+                "uk": "* «Шукати зараз» (вкладка «Компоненти») тепер працює одразу для щойно введеної адреси, без попереднього збереження.",
+                "zh-cn": "* \"立即搜索\"(组件选项卡)现在可以立即对刚输入的地址生效,无需先保存。"
+            },
             "0.3.3": {
                 "en": "* Fixed missing `chargepoint`/`counter`/`battery`/`pv` parent objects, and invalid roles on three control states (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`).\n* Fixed `consumer.<id>.chargeState` reading empty, and removed `consumer.<id>.phasesInUse`, which has no live equivalent on real devices.\n* Added `consumer.<id>.linkedCounterId` and `consumer.<id>.chargeMode`.",
                 "de": "* Fehlende übergeordnete Objekte `chargepoint`/`counter`/`battery`/`pv` sowie ungültige Rollen bei drei Control-States (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`) behoben.\n* `consumer.<id>.chargeState` las leer - behoben. `consumer.<id>.phasesInUse` entfernt, da es auf echten Geräten keine Entsprechung hat.\n* `consumer.<id>.linkedCounterId` und `consumer.<id>.chargeMode` hinzugefügt.",

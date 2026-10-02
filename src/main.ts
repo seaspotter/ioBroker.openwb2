@@ -1,10 +1,11 @@
 import * as utils from '@iobroker/adapter-core';
 import { SimpleApiClient, type SimpleApiConnectionConfig, type SimpleApiResult } from './lib/simpleApiClient';
-import { MqttReader, testMqttConnection, type MqttConnectionConfig } from './lib/mqttReader';
+import { MqttReader, testMqttConnection, probeMqttComponents, type MqttConnectionConfig } from './lib/mqttReader';
 import {
     parseComponentTable,
     serializeComponentTable,
     mergeDiscovered,
+    mergeComponentIds,
     enabledIdsByType,
     type ComponentTableRow,
 } from './lib/componentTable';
@@ -448,13 +449,36 @@ class Openwb2 extends utils.Adapter {
     }
 
     /**
-     * Read-only snapshot for the admin UI's "Probe now" button (Components tab) - just
-     * MqttReader's already-observed IDs, no network round-trip needed. Does not touch the
-     * persisted component table or adapter state - the React UI merges the result into its own
-     * (unsaved) local table state, so the user can review/edit before Save.
+     * Snapshot for the admin UI's "Probe now" button (Components tab): unions MqttReader's
+     * already-observed IDs (free, no network round-trip) with a fresh short-lived probe against
+     * whatever connection details the admin UI's current form holds - including a host that was
+     * just typed in and never saved, which the persistent connection has no way to know about yet.
+     * Does not touch the persisted component table or adapter state - the React UI merges the
+     * result into its own (unsaved) local table state, so the user can review/edit before Save.
+     *
+     * @param obj - incoming message, `message` holds the current (possibly unsaved) MQTT connection
+     *   fields - see the payload shape ComponentsTab.tsx sends
      */
-    private probeComponents(): SimpleApiResult<ComponentIds> {
-        return { ok: true, data: this.mqttReader.getObservedIds() };
+    private async probeComponents(obj: ioBroker.Message): Promise<SimpleApiResult<ComponentIds>> {
+        const cfg = (obj.message ?? {}) as {
+            host?: string;
+            mqttPort?: number;
+            mqttUsername?: string;
+            mqttPassword?: string;
+        };
+        const probed = await probeMqttComponents(
+            {
+                host: cfg.host || this.config.host,
+                port: cfg.mqttPort ?? this.config.mqttPort,
+                username: cfg.mqttUsername ?? this.config.mqttUsername,
+                password: cfg.mqttPassword ?? this.config.mqttPassword,
+            },
+            this,
+        );
+        if (!probed.ok) {
+            return { ok: false, error: probed.error ?? 'Probe failed' };
+        }
+        return { ok: true, data: mergeComponentIds(this.mqttReader.getObservedIds(), probed.data) };
     }
 
     /**
@@ -511,7 +535,7 @@ class Openwb2 extends utils.Adapter {
         }
         if (obj.command === 'probeComponents') {
             if (obj.callback) {
-                this.sendTo(obj.from, obj.command, this.probeComponents(), obj.callback);
+                void this.probeComponents(obj).then(result => this.sendTo(obj.from, obj.command, result, obj.callback));
             }
         }
     }

@@ -125,6 +125,12 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     ### **WORK IN PROGRESS**
 -->
 
+### 0.3.4 (2026-10-02)
+
+- (SeaSpotter) "Probe now" (Components tab) now works immediately on a host you've just typed in,
+  without having to Save first - it previously only ever saw components the adapter's own
+  persistent connection had already observed since its last restart.
+
 ### 0.3.3 (2026-10-02)
 
 - (SeaSpotter) Fixed `chargepoint`/`counter`/`battery`/`pv` missing their parent folder object -
