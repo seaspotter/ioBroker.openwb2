@@ -125,6 +125,11 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     ### **WORK IN PROGRESS**
 -->
 
+### 0.3.5 (2026-10-02)
+
+- (SeaSpotter) Added the required `ioBroker` keyword to `package.json`, and trimmed old changelog
+  entries from `io-package.json` so the ioBroker repository builder doesn't truncate them.
+
 ### 0.3.4 (2026-10-02)
 
 - (SeaSpotter) "Probe now" (Components tab) now works immediately on a host you've just typed in,
