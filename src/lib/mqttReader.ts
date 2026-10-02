@@ -30,16 +30,24 @@ export interface MqttConnectionConfig {
     password?: string;
 }
 
+/** The subset of ioBroker.Adapter's timer methods testMqttConnection needs, so its timeout is tracked and cleared like any other adapter timer instead of a bare setTimeout. */
+export interface AdapterTimers {
+    setTimeout: ioBroker.Adapter['setTimeout'];
+    clearTimeout: ioBroker.Adapter['clearTimeout'];
+}
+
 /**
  * One-shot connectivity check for the admin UI's "Test connection" button - opens a short-lived
  * connection (separate from the adapter's own persistent one), waits for either a successful
  * connect or an error/timeout, then always disconnects. Never subscribes to anything.
  *
  * @param cfg - MQTT broker connection details
+ * @param timers - the calling adapter instance (for its managed setTimeout/clearTimeout)
  * @param timeoutMs - how long to wait before giving up (default 5s)
  */
 export function testMqttConnection(
     cfg: MqttConnectionConfig,
+    timers: AdapterTimers,
     timeoutMs = 5000,
 ): Promise<{ ok: boolean; error?: string }> {
     return new Promise(resolve => {
@@ -51,18 +59,19 @@ export function testMqttConnection(
         });
 
         let settled = false;
-        const finish = (result: { ok: boolean; error?: string }): void => {
+        const timeoutHandle = timers.setTimeout(() => finish({ ok: false, error: 'Timed out' }), timeoutMs);
+        function finish(result: { ok: boolean; error?: string }): void {
             if (settled) {
                 return;
             }
             settled = true;
+            timers.clearTimeout(timeoutHandle);
             client.end(true);
             resolve(result);
-        };
+        }
 
         client.on('connect', () => finish({ ok: true }));
         client.on('error', err => finish({ ok: false, error: err.message }));
-        setTimeout(() => finish({ ok: false, error: 'Timed out' }), timeoutMs);
     });
 }
 
