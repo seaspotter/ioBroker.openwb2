@@ -284,7 +284,7 @@ class Openwb2 extends utils.Adapter {
         }
 
         if (type === 'chargepoint') {
-            await this.setObjectNotExistsAsync(`${channelId}.control`, {
+            await this.extendObjectAsync(`${channelId}.control`, {
                 type: 'channel',
                 common: { name: translated('Control') },
                 native: {},
@@ -306,7 +306,7 @@ class Openwb2 extends utils.Adapter {
         }
 
         if (type === 'battery') {
-            await this.setObjectNotExistsAsync(`${channelId}.control`, {
+            await this.extendObjectAsync(`${channelId}.control`, {
                 type: 'channel',
                 common: { name: translated('Control') },
                 native: {},
