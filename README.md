@@ -125,6 +125,13 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     ### **WORK IN PROGRESS**
 -->
 
+### 0.3.3 (2026-10-02)
+
+- (SeaSpotter) Fixed `chargepoint`/`counter`/`battery`/`pv` missing their parent folder object -
+  each `<type>.<id>` channel was an orphan with no `<type>` object above it.
+- (SeaSpotter) Fixed `batPowerReserve`/`instantChargingAmount`/`pvChargingAmount` using roles not in
+  the ioBroker role catalogue (`level.power`/`level.energy` -> `level`).
+
 ### 0.3.2 (2026-10-02)
 
 - (SeaSpotter) Fixed the admin UI's "Test connection" MQTT probe leaking a bare, untracked timer.

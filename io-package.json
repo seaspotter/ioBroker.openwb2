@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "openwb2",
-        "version": "0.3.2",
+        "version": "0.3.3",
         "news": {
+            "0.3.3": {
+                "en": "* Fixed missing `chargepoint`/`counter`/`battery`/`pv` parent objects, and invalid roles on three control states (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`).",
+                "de": "* Fehlende übergeordnete Objekte `chargepoint`/`counter`/`battery`/`pv` sowie ungültige Rollen bei drei Control-States (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`) behoben.",
+                "ru": "* Исправлены отсутствующие родительские объекты `chargepoint`/`counter`/`battery`/`pv` и недопустимые роли у трёх управляющих состояний (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`).",
+                "pt": "* Corrigidos os objetos pai em falta `chargepoint`/`counter`/`battery`/`pv` e funções (roles) inválidas em três estados de controlo (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`).",
+                "nl": "* Ontbrekende bovenliggende objecten `chargepoint`/`counter`/`battery`/`pv` en ongeldige rollen bij drie controlestatussen (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`) gerepareerd.",
+                "fr": "* Correction des objets parents manquants `chargepoint`/`counter`/`battery`/`pv` et des rôles invalides sur trois états de contrôle (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`).",
+                "it": "* Risolti gli oggetti padre mancanti `chargepoint`/`counter`/`battery`/`pv` e i ruoli non validi su tre stati di controllo (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`).",
+                "es": "* Corregidos los objetos padre `chargepoint`/`counter`/`battery`/`pv` que faltaban, y roles no válidos en tres estados de control (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`).",
+                "pl": "* Naprawiono brakujące obiekty nadrzędne `chargepoint`/`counter`/`battery`/`pv` oraz nieprawidłowe role w trzech stanach sterujących (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`).",
+                "uk": "* Виправлено відсутні батьківські об'єкти `chargepoint`/`counter`/`battery`/`pv` та недійсні ролі у трьох керуючих станах (`batPowerReserve`, `instantChargingAmount`, `pvChargingAmount`).",
+                "zh-cn": "* 修复了缺失的 `chargepoint`/`counter`/`battery`/`pv` 父对象,以及三个控制状态(`batPowerReserve`、`instantChargingAmount`、`pvChargingAmount`)上无效的角色(role)。"
+            },
             "0.3.2": {
                 "en": "* Fixed the \"Test connection\" MQTT probe leaking an untracked timer. Various packaging/CI fixes for ioBroker repository compliance.",
                 "de": "* Die MQTT-Prüfung von „Verbindung testen“ hinterließ einen nicht verfolgten Timer – behoben. Diverse Packaging-/CI-Korrekturen für die ioBroker-Repository-Konformität.",
