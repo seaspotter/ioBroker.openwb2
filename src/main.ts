@@ -508,7 +508,7 @@ class Openwb2 extends utils.Adapter {
             // get_chargepoint_all, it can't hit a nonexistent-ID mosquitto_sub timeout (~8s on
             // the real device, confirmed live) just because chargepoint 0 happens not to exist.
             this.client.read(cfg, { get_lastlivevaluesjson: 1 }),
-            testMqttConnection(mqttCfg),
+            testMqttConnection(mqttCfg, this),
         ]);
 
         if (obj.callback) {
