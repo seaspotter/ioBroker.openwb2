@@ -165,8 +165,7 @@ released into the ioBroker repository, see
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.2.0 (2026-10-02)
 
 - (SeaSpotter) Replaced the adapter icon with openWB's own official logo, used with permission from
   openWB.
