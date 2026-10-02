@@ -75,6 +75,76 @@ export function testMqttConnection(
     });
 }
 
+/**
+ * One-shot component discovery for the admin UI's "Probe now" button when there's no persistent
+ * connection to rely on yet (a brand-new instance, or a host just typed in but not yet saved) -
+ * opens a short-lived connection (separate from the adapter's own persistent one), subscribes to
+ * every simpleAPI topic, collects whatever retained messages arrive within `timeoutMs`, then always
+ * disconnects. Unlike MqttReader.getObservedIds(), this needs no prior Save/restart to see
+ * anything, at the cost of a real network round-trip each time it's called.
+ *
+ * @param cfg - MQTT broker connection details
+ * @param timers - the calling adapter instance (for its managed setTimeout/clearTimeout)
+ * @param timeoutMs - how long to wait for retained messages to arrive (default 3s - they land
+ *   within milliseconds of subscribing, this is just a safety margin)
+ */
+export function probeMqttComponents(
+    cfg: MqttConnectionConfig,
+    timers: AdapterTimers,
+    timeoutMs = 3000,
+): Promise<{ ok: boolean; error?: string; data: ComponentIds }> {
+    return new Promise(resolve => {
+        const observed: Record<ComponentType, Set<number>> = {
+            chargepoint: new Set(),
+            counter: new Set(),
+            battery: new Set(),
+            pv: new Set(),
+            consumer: new Set(),
+        };
+        const toComponentIds = (): ComponentIds => {
+            const ids = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] } as ComponentIds;
+            for (const type of COMPONENT_TYPES) {
+                ids[type] = [...observed[type]].sort((a, b) => a - b);
+            }
+            return ids;
+        };
+
+        const client = mqtt.connect(`mqtt://${cfg.host}:${cfg.port}`, {
+            username: cfg.username || undefined,
+            password: cfg.password || undefined,
+            connectTimeout: timeoutMs,
+            reconnectPeriod: 0, // this is a one-shot probe - never auto-reconnect
+        });
+
+        let settled = false;
+        const timeoutHandle = timers.setTimeout(() => finish({ ok: true, data: toComponentIds() }), timeoutMs);
+        function finish(result: { ok: boolean; error?: string; data: ComponentIds }): void {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            timers.clearTimeout(timeoutHandle);
+            client.end(true);
+            resolve(result);
+        }
+
+        client.on('connect', () => {
+            client.subscribe(SIMPLE_API_SUBSCRIBE_FILTERS, err => {
+                if (err) {
+                    finish({ ok: false, error: err.message, data: toComponentIds() });
+                }
+            });
+        });
+        client.on('error', err => finish({ ok: false, error: err.message, data: toComponentIds() }));
+        client.on('message', topic => {
+            const parsed = parseSimpleApiTopic(topic);
+            if (parsed) {
+                observed[parsed.type].add(parsed.id);
+            }
+        });
+    });
+}
+
 const MQTT_FIELD_LOOKUP: Record<ComponentType, Map<string, ReadFieldDef>> = {
     chargepoint: buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS),
     counter: buildMqttFieldLookup(COUNTER_READ_FIELDS),

@@ -71,7 +71,13 @@ export default class ComponentsTab extends React.Component<ComponentsTabProps, C
 
     private probeNow = async (): Promise<void> => {
         this.setState({ probing: true });
-        const response = await this.props.socket.sendTo(this.props.instanceId, 'probeComponents', {});
+        const { native } = this.props;
+        const response = await this.props.socket.sendTo(this.props.instanceId, 'probeComponents', {
+            host: native.host,
+            mqttPort: asNumber(native.mqttPort, 1883),
+            mqttUsername: native.mqttUsername,
+            mqttPassword: native.mqttPassword,
+        });
         const result = response as { ok: boolean; data?: ComponentIds; error?: string } | undefined;
         this.setState({ probing: false });
 
