@@ -31,9 +31,7 @@ Read-Modify-Write des gesamten `charge_template`-JSON-Dokuments durch, und es gi
 diese Logik nur wegen eines gelegentlichen HTTP-POSTs neu zu implementieren.
 
 Alles, was dieser Adapter liest, kommt ausschließlich aus `openWB/simpleAPI/#`, nie aus dem rohen
-zugrunde liegenden MQTT-Namensraum - die Steuerung von IO-Modulen ist genau deshalb nicht enthalten:
-`openWB/simpleAPI/#` spiegelt sie überhaupt nicht, und sie zu lesen würde bedeuten, den rohen,
-nicht-`simpleAPI`-Namensraum zu abonnieren.
+zugrunde liegenden MQTT-Namensraum.
 
 ### Voraussetzungen
 
@@ -129,10 +127,6 @@ jeder Änderung aktualisiert, egal ob sie von diesem Adapter oder von openWBs ei
 - Die Komponentenerkennung fügt nur Zeilen hinzu, stets deaktiviert - sie aktiviert oder löscht nie
   etwas von selbst. Eine Zeile muss selbst angekreuzt (und gespeichert) werden, sobald bestätigt ist,
   dass es sich um das erwartete Gerät handelt.
-- Die Steuerung von IO-Modulen (digitale/analoge Ausgänge) wird nicht unterstützt -
-  `openWB/simpleAPI/#` spiegelt IO überhaupt nicht, und dieser Adapter liest bewusst nie außerhalb
-  dieses Namensraums. Bei Bedarf erneut prüfen, falls openWB IO jemals zu `simpleAPI_mqtt.py`
-  hinzufügt.
 - Die MQTT-Broker-Verbindung hat in der Admin-Oberfläche aktuell keine TLS-Option - nur einfaches
   `mqtt://`.
 

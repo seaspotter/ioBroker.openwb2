@@ -35,8 +35,7 @@ instead of a periodic network call. Writes stay on HTTP regardless: `simpleapi.p
 server-side, and there's no reason to reimplement that logic just to avoid one occasional HTTP POST.
 
 Everything this adapter reads comes from `openWB/simpleAPI/#` specifically, never the raw underlying MQTT
-namespace - IO module control is out of scope for exactly this reason: `openWB/simpleAPI/#` doesn't mirror
-it at all, and reading it would mean subscribing to the raw, non-`simpleAPI` namespace instead.
+namespace.
 
 ### Requirements
 
@@ -121,9 +120,6 @@ this adapter or from openWB's own UI.
 
 - Component discovery only ever adds rows, and always disabled - it never activates or deletes anything on
   its own. Tick a row's checkbox yourself (and Save) once you've confirmed it's the device you expect.
-- IO module control (digital/analog outputs) isn't supported - `openWB/simpleAPI/#` doesn't mirror IO at
-  all, and this adapter deliberately never reads outside that namespace. Revisit if/when openWB adds IO to
-  `simpleAPI_mqtt.py`.
 - The MQTT broker connection currently has no TLS option in the admin UI - only plain `mqtt://`.
 
 ## Developer manual
