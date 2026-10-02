@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "openwb2",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "news": {
+            "0.3.2": {
+                "en": "* Fixed the \"Test connection\" MQTT probe leaking an untracked timer. Various packaging/CI fixes for ioBroker repository compliance.",
+                "de": "* Die MQTT-Prüfung von „Verbindung testen“ hinterließ einen nicht verfolgten Timer – behoben. Diverse Packaging-/CI-Korrekturen für die ioBroker-Repository-Konformität.",
+                "ru": "* Исправлена утечка неотслеживаемого таймера при MQTT-проверке «Проверить соединение». Различные исправления упаковки/CI для соответствия требованиям репозитория ioBroker.",
+                "pt": "* Corrigido um temporizador não controlado na sondagem MQTT do \"Testar ligação\". Várias correções de empacotamento/CI para conformidade com o repositório ioBroker.",
+                "nl": "* De MQTT-test van \"Verbinding testen\" liet een niet-bijgehouden timer achter - opgelost. Diverse packaging-/CI-correcties voor ioBroker-repositoryconformiteit.",
+                "fr": "* Correction d'un minuteur non suivi laissé par le test MQTT de « Tester la connexion ». Diverses corrections de packaging/CI pour la conformité au dépôt ioBroker.",
+                "it": "* Risolto un timer non tracciato lasciato dal test MQTT di \"Verifica connessione\". Varie correzioni di packaging/CI per la conformità al repository ioBroker.",
+                "es": "* Corregido un temporizador no controlado que dejaba la prueba MQTT de \"Probar conexión\". Varias correcciones de empaquetado/CI para el cumplimiento del repositorio de ioBroker.",
+                "pl": "* Naprawiono niekontrolowany timer pozostawiany przez test MQTT \"Testuj połączenie\". Różne poprawki pakowania/CI dla zgodności z repozytorium ioBroker.",
+                "uk": "* Виправлено неконтрольований таймер, що залишався після MQTT-перевірки «Перевірити з'єднання». Різні виправлення пакування/CI для відповідності репозиторію ioBroker.",
+                "zh-cn": "* 修复了\"测试连接\"MQTT 探测遗留未跟踪定时器的问题。进行了多项打包/CI 修复以符合 ioBroker 仓库要求。"
+            },
             "0.3.1": {
                 "en": "* Fixed `chargepoint.<id>.control`/`battery.<id>.control` channel names never updating on an existing installation.",
                 "de": "* Die Namen der Kanäle `chargepoint.<id>.control`/`battery.<id>.control` wurden korrigiert, die sich bei einer bestehenden Installation nie aktualisierten.",

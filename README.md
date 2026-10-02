@@ -125,6 +125,12 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     ### **WORK IN PROGRESS**
 -->
 
+### 0.3.2 (2026-10-02)
+
+- (SeaSpotter) Fixed the admin UI's "Test connection" MQTT probe leaking a bare, untracked timer.
+- (SeaSpotter) Various packaging/CI fixes for ioBroker repository compliance (dependency versions,
+  workflow ordering, Dependabot cooldown and automerge for patch/minor updates).
+
 ### 0.3.1 (2026-10-02)
 
 - (SeaSpotter) Fixed `chargepoint.<id>.control`/`battery.<id>.control` channel names never
