@@ -162,6 +162,11 @@ released into the ioBroker repository, see
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+- (SeaSpotter) Migrated the admin UI from `@iobroker/adapter-react-v5` to its official successor
+  `@iobroker/gui-components`, and upgraded to React 19 and MUI 9.
+
 ### 0.2.1 (2026-10-02)
 
 - (SeaSpotter) Clarified in the README that `simpleAPI` is always active since openWB 2.3 (nothing
