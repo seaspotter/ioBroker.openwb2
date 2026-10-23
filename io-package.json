@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "openwb2",
-        "version": "0.3.6",
+        "version": "0.3.7",
         "news": {
+            "0.3.7": {
+                "en": "* Fixed several German admin UI translations that had drifted from their intended meaning (e.g. \"ID\" read as an ID card, \"Advanced\" as in cutting-edge, \"Probe now\" as a medical/space probe).",
+                "de": "* Mehrere deutsche Übersetzungen in der Admin-Oberfläche korrigiert, die ihre eigentliche Bedeutung verloren hatten (z. B. „ID” als Ausweis, „Erweitert” statt „Fortschrittlich”, „Jetzt suchen” statt einer wörtlichen Sonden-Übersetzung).",
+                "ru": "* Исправлено несколько немецких переводов в админ-интерфейсе, утративших исходный смысл (например, «ID» воспринималось как удостоверение личности, «Advanced» — как «передовой»).",
+                "pt": "* Corrigidas várias traduções alemãs na interface de administração que haviam perdido o significado pretendido (por exemplo, \"ID\" interpretado como cartão de identidade, \"Advanced\" como \"de ponta\").",
+                "nl": "* Diverse Duitse vertalingen in de beheerinterface gecorrigeerd die hun bedoelde betekenis hadden verloren (bijv. \"ID\" gelezen als identiteitskaart, \"Advanced\" als vooruitstrevend).",
+                "fr": "* Correction de plusieurs traductions allemandes de l'interface d'administration qui avaient perdu leur sens voulu (par ex. « ID » compris comme une carte d'identité, « Advanced » comme « progressiste »).",
+                "it": "* Corrette diverse traduzioni tedesche nell'interfaccia di amministrazione che avevano perso il significato previsto (ad es. \"ID\" interpretato come carta d'identità, \"Advanced\" come \"progressista\").",
+                "es": "* Se corrigieron varias traducciones al alemán en la interfaz de administración que habían perdido su significado previsto (por ejemplo, \"ID\" interpretado como documento de identidad, \"Advanced\" como \"progresista\").",
+                "pl": "* Poprawiono kilka niemieckich tłumaczeń w interfejsie administracyjnym, które utraciły zamierzone znaczenie (np. „ID” odczytywane jako dowód osobisty, „Advanced” jako „postępowy”).",
+                "uk": "* Виправлено кілька німецьких перекладів в адмін-інтерфейсі, які втратили початковий сенс (наприклад, «ID» сприймалося як посвідчення особи, «Advanced» — як «прогресивний»).",
+                "zh-cn": "* 修复了管理界面中几处偏离原意的德语翻译(例如 \"ID\" 被译为身份证,\"Advanced\" 被译为\"先进的\"而非\"高级设置\")。"
+            },
             "0.3.6": {
                 "en": "* Added a minimum 10-second lower bound to the \"New-device check interval\" (Components tab), so a mistyped fractional value can no longer poll the device far more often than intended.",
                 "de": "* Für das Intervall „Neue Geräte suchen” (Komponenten-Tab) wurde eine Mindestgrenze von 10 Sekunden eingeführt, damit ein versehentlich eingegebener Bruchteilswert das Gerät nicht mehr viel häufiger abfragt als beabsichtigt.",
@@ -80,19 +93,6 @@
                 "pl": "* Naprawiono nazwy kanałów `chargepoint.<id>.control`/`battery.<id>.control`, które nigdy nie aktualizowały się w istniejącej instalacji.",
                 "uk": "* Виправлено назви каналів `chargepoint.<id>.control`/`battery.<id>.control`, які ніколи не оновлювалися в існуючій інсталяції.",
                 "zh-cn": "* 修复了 `chargepoint.<id>.control`/`battery.<id>.control` 通道名称在现有安装中从不更新的问题。"
-            },
-            "0.3.0": {
-                "en": "* Migrated the admin UI to `@iobroker/gui-components` (React 19, MUI 9).",
-                "de": "* Die Admin-Oberfläche wurde auf `@iobroker/gui-components` migriert (React 19, MUI 9).",
-                "ru": "* Административный интерфейс перенесён на `@iobroker/gui-components` (React 19, MUI 9).",
-                "pt": "* A interface de administração foi migrada para `@iobroker/gui-components` (React 19, MUI 9).",
-                "nl": "* De beheerinterface is gemigreerd naar `@iobroker/gui-components` (React 19, MUI 9).",
-                "fr": "* L'interface d'administration a été migrée vers `@iobroker/gui-components` (React 19, MUI 9).",
-                "it": "* L'interfaccia di amministrazione è stata migrata a `@iobroker/gui-components` (React 19, MUI 9).",
-                "es": "* La interfaz de administración se migró a `@iobroker/gui-components` (React 19, MUI 9).",
-                "pl": "* Interfejs administracyjny został przeniesiony do `@iobroker/gui-components` (React 19, MUI 9).",
-                "uk": "* Адміністративний інтерфейс перенесено на `@iobroker/gui-components` (React 19, MUI 9).",
-                "zh-cn": "* 管理界面已迁移至 `@iobroker/gui-components`（React 19、MUI 9）。"
             }
         },
         "titleLang": {

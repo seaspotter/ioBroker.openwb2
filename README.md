@@ -125,6 +125,14 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     ### **WORK IN PROGRESS**
 -->
 
+### 0.3.7 (2026-10-23)
+
+- (SeaSpotter) Fixed several German admin UI translations that had drifted from their intended
+  meaning through context-free auto-translation (`ID` read as an ID card ("Ausweis"), `Advanced`
+  as in cutting-edge ("Fortschrittlich") instead of "further settings" ("Erweitert"), `Enabled`
+  as "made possible" ("Ermöglicht") instead of "Aktiviert", `Probe now`/`Probe failed` as a
+  medical/space probe ("Sonde") instead of "search").
+
 ### 0.3.6 (2026-10-23)
 
 - (SeaSpotter) Added a minimum 10-second lower bound to the **New-device check interval**
