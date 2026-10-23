@@ -22,5 +22,12 @@ export type ComponentIds = Record<ComponentType, number[]>;
  */
 export const MAX_TIMER_MS = 2147483647;
 
+/**
+ * Lowest interval accepted for a periodic background check against the openWB device - below this,
+ * a fat-fingered or fractional-minute config value (e.g. `discoveryIntervalMin: 0.001`) would hammer
+ * it far more often than any legitimate use case needs.
+ */
+export const MIN_INTERVAL_MS = 10_000;
+
 export const DEFAULT_REQUEST_TIMEOUT_MS = 5000;
 export const DEFAULT_DISCOVERY_INTERVAL_MIN = 1440; // 24h

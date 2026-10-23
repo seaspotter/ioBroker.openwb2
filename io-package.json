@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "openwb2",
-        "version": "0.3.5",
+        "version": "0.3.6",
         "news": {
+            "0.3.6": {
+                "en": "* Added a minimum 10-second lower bound to the \"New-device check interval\" (Components tab), so a mistyped fractional value can no longer poll the device far more often than intended.",
+                "de": "* Für das Intervall „Neue Geräte suchen” (Komponenten-Tab) wurde eine Mindestgrenze von 10 Sekunden eingeführt, damit ein versehentlich eingegebener Bruchteilswert das Gerät nicht mehr viel häufiger abfragt als beabsichtigt.",
+                "ru": "* Для интервала «Проверка новых устройств» (вкладка «Компоненты») добавлено минимальное значение 10 секунд, чтобы случайно введённое дробное значение больше не опрашивало устройство значительно чаще, чем задумано.",
+                "pt": "* Foi adicionado um limite mínimo de 10 segundos ao \"Intervalo de verificação de novos dispositivos\" (separador Componentes), para que um valor fracionário digitado por erro não sobrecarregue o dispositivo com consultas muito mais frequentes do que o previsto.",
+                "nl": "* Er is een minimum van 10 seconden toegevoegd aan het \"Interval voor nieuwe-apparaten controle\" (tabblad Componenten), zodat een per ongeluk ingevoerde decimale waarde het apparaat niet veel vaker bevraagt dan bedoeld.",
+                "fr": "* Une limite minimale de 10 secondes a été ajoutée à l'« intervalle de recherche de nouveaux appareils » (onglet Composants), afin qu'une valeur décimale saisie par erreur ne sollicite plus l'appareil bien plus souvent que prévu.",
+                "it": "* È stato aggiunto un limite minimo di 10 secondi all'\"intervallo di ricerca nuovi dispositivi\" (scheda Componenti), così un valore frazionario inserito per errore non interroga più il dispositivo molto più spesso del previsto.",
+                "es": "* Se añadió un límite mínimo de 10 segundos al \"intervalo de comprobación de nuevos dispositivos\" (pestaña Componentes), para que un valor fraccionario introducido por error ya no consulte el dispositivo con mucha más frecuencia de la prevista.",
+                "pl": "* Dodano minimalny limit 10 sekund dla „Interwału wyszukiwania nowych urządzeń” (karta Komponenty), aby błędnie wpisana wartość dziesiętna nie odpytywała urządzenia znacznie częściej niż zamierzono.",
+                "uk": "* Додано мінімальне обмеження 10 секунд для «Інтервалу перевірки нових пристроїв» (вкладка «Компоненти»), щоб помилково введене дробове значення більше не опитувало пристрій значно частіше, ніж передбачалося.",
+                "zh-cn": "* 为\"新设备检测间隔\"(组件选项卡)添加了最小 10 秒的下限,防止误输入的小数值导致对设备的轮询频率远超预期。"
+            },
             "0.3.5": {
                 "en": "* Added the required \"ioBroker\" keyword to package.json, and trimmed old changelog entries so the repository builder doesn't truncate them.",
                 "de": "* Das erforderliche Schlagwort „ioBroker” zu package.json hinzugefügt und alte Changelog-Einträge entfernt, damit der Repository-Builder sie nicht abschneidet.",
@@ -80,19 +93,6 @@
                 "pl": "* Interfejs administracyjny został przeniesiony do `@iobroker/gui-components` (React 19, MUI 9).",
                 "uk": "* Адміністративний інтерфейс перенесено на `@iobroker/gui-components` (React 19, MUI 9).",
                 "zh-cn": "* 管理界面已迁移至 `@iobroker/gui-components`（React 19、MUI 9）。"
-            },
-            "0.2.1": {
-                "en": "* Clarified in the README that `simpleAPI` is always active since openWB 2.3 (nothing\n  to enable), and removed remaining mentions of IO module support.\n* Added GitHub repository topics and a Dependabot configuration for automatic\n  dependency updates.",
-                "de": "* In der README geklärt, dass `SimpleAPI` seit OpenWB 2.3 immer aktiv ist (nichts\n  aktivieren) und entfernte alle Hinweise zur IO-Modulunterstützung.\n* GitHub-Repository-Themen und Dependabot für Automatik hinzugefügt\n  Updates zu Abhängigkeiten.",
-                "ru": "* В README уточнено, что «SimpleAPI» всегда активен, начиная с OpenWB 2.3 (ничего\n  для включения) и удалены оставшиеся упоминания о поддержке модулей ввода-вывода.\n* Добавлены темы репозитория GitHub и конфигурация Dependabot для автоматической настройки\n  обновления зависимостей.",
-                "pt": "* Esclareceu no README que `SimpleAPI` está sempre ativo desde o OpenWB 2.3 (nada\n  para ativar) e removeu as demais menções ao suporte ao módulo IO.\n* Adicionou tópicos do repositório GitHub e configuração automática do Dependabot\n  atualizações de dependência.",
-                "nl": "* In de README is verduidelijkt dat `SimpleAPI` altijd actief is sinds OpenWB 2.3 (niets\n  om in te schakelen), en de resterende vermeldingen van ondersteuning voor IO-modules verwijderd.\n* Onderwerpen voor de GitHub-repository toegevoegd en een Dependabot-configuratie voor automatische\n  updates over de afhankelijkheid.",
-                "fr": "* Le README précise que « SimpleAPI » est toujours actif depuis OpenWB 2.3 (rien\n  pour activer), et a supprimé le reste du support des modules IO.\n* Ajout de sujets au dépôt GitHub et d'une configuration Dependabot automatique\n  mises à jour de dépendance.",
-                "it": "* Ha chiarito nel README che `SimpleAPI` è sempre attivo da OpenWB 2.3 (niente\n  abilitare) e ha rimosso le altre menzioni al supporto del modulo IO.\n* Aggiunti argomenti del repository GitHub e una configurazione automatica di Dependabot\n  aggiornamenti.",
-                "es": "* Se aclaró en el README que `SimpleAPI` siempre está activa desde OpenWB 2.3 (nada\n  para habilitar), y eliminó el resto de menciones al soporte de módulos IO.\n* Se han añadido temas de repositorio de GitHub y una configuración de Dependabot automática\n  actualizaciones de dependencias.",
-                "pl": "* Wyjaśniono w README, że „SimpleAPI” jest zawsze aktywny od OpenWB 2.3 (nic\n  aby włączyć) i usunięto pozostałe wzmianki o obsłudze modułu IO.\n* Dodano tematy repozytorium GitHub i konfigurację Dependabot dla automatycznego\n  aktualizacje zależności.",
-                "uk": "* У README уточнено, що `SimpleAPI` завжди активний з OpenWB 2.3 (нічого\n  щоб увімкнути), і видалено залишки згадок про підтримку модуля IO.\n* Додані теми сховища GitHub та конфігурація Dependabot для автоматичного\n  оновлення залежностей.",
-                "zh-cn": "* 在自述文件中阐明，自 OpenWB 2.3 起，`SimpleAPI`一直处于活动状态（什么都没有）\n  启用），并删除了其余提及 IO 模块支持的内容。\n* 添加了 GitHub 存储库主题和 Dependabot 自动配置\n  依赖项更新。"
             }
         },
         "titleLang": {

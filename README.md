@@ -125,6 +125,12 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     ### **WORK IN PROGRESS**
 -->
 
+### 0.3.6 (2026-10-23)
+
+- (SeaSpotter) Added a minimum 10-second lower bound to the **New-device check interval**
+  (Components tab) - a mistyped fractional value could previously poll the device far more often
+  than intended.
+
 ### 0.3.5 (2026-10-02)
 
 - (SeaSpotter) Added the required `ioBroker` keyword to `package.json`, and trimmed old changelog

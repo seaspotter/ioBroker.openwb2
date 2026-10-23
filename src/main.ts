@@ -29,6 +29,7 @@ import {
 import {
     COMPONENT_TYPES,
     MAX_TIMER_MS,
+    MIN_INTERVAL_MS,
     DEFAULT_DISCOVERY_INTERVAL_MIN,
     type ComponentType,
     type ComponentIds,
@@ -195,13 +196,18 @@ class Openwb2 extends utils.Adapter {
     /**
      * Validates a configurable interval against Node's setTimeout/setInterval max delay
      * (2^31 - 1 ms) - an out-of-range or invalid value would otherwise produce unpredictable
-     * timer behavior instead of the expected interval.
+     * timer behavior instead of the expected interval. Also enforces MIN_INTERVAL_MS so a
+     * fractional-minute config value (e.g. `discoveryIntervalMin: 0.001`) can't turn into a
+     * sub-second loop hammering the device.
      *
      * @param raw - configured interval in ms
      * @param fallback - value to use if raw is invalid
      */
     private resolveIntervalMs(raw: number, fallback: number): number {
-        return Number.isFinite(raw) && raw > 0 && raw <= MAX_TIMER_MS ? raw : fallback;
+        if (!Number.isFinite(raw) || raw <= 0 || raw > MAX_TIMER_MS) {
+            return fallback;
+        }
+        return Math.max(raw, MIN_INTERVAL_MS);
     }
 
     /** Deletes objects left over from an earlier dev build of this adapter - safe no-op if absent. */
