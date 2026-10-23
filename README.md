@@ -127,11 +127,17 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
 
 ### 0.3.7 (2026-10-23)
 
-- (SeaSpotter) Fixed several German admin UI translations that had drifted from their intended
-  meaning through context-free auto-translation (`ID` read as an ID card ("Ausweis"), `Advanced`
-  as in cutting-edge ("Fortschrittlich") instead of "further settings" ("Erweitert"), `Enabled`
-  as "made possible" ("Ermöglicht") instead of "Aktiviert", `Probe now`/`Probe failed` as a
-  medical/space probe ("Sonde") instead of "search").
+- (SeaSpotter) Fixed mistranslated admin UI strings across all 10 non-English languages -
+  apparent artifacts of context-free, word-by-word auto-translation. Common patterns: `ID` read
+  as an ID card (German "Ausweis", Dutch "Identiteitskaart", Spanish "Identificación", French
+  "Identifiant", Russian "Идентификатор", and a garbled "EU IA" in Portuguese); `Advanced` read as
+  "cutting-edge" instead of "further settings" (German, Russian, Ukrainian, Chinese);
+  `Probe now`/`Probe failed` translated as a literal medical/space probe instead of "search"
+  (Spanish, French, Italian, Dutch, Portuguese, Ukrainian); and a sentence about naming counters,
+  batteries and PV inverters where "name" (the verb) was misread as part of a noun phrase
+  ("name-counters") in Dutch, Russian, Ukrainian and Chinese. Also fixed several button labels
+  using the wrong grammatical mood for their language's UI convention, wrong grammatical gender,
+  and French's `Type` column header mistranslated as "Taper" ("to type on a keyboard").
 
 ### 0.3.6 (2026-10-23)
 
