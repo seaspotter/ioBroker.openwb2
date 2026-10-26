@@ -55,10 +55,10 @@ describe('buildMqttFieldLookup', () => {
         expect(lookup.size).to.equal(0);
     });
 
-    it('scales maxPriceEco from EUR/Wh (wire) to ct/kWh (displayed), matching the writable control', () => {
+    it('reads maxPriceEco as-is in ct/kWh - openWB publishes it pre-converted since openWB/core#4195', () => {
         const field = CHARGEPOINT_READ_FIELDS.find(f => f.stateId === 'maxPriceEco')!;
         expect(field.unit).to.equal('ct/kWh');
-        expect(field.fromMqtt!(0.0002)).to.equal(20);
+        expect(field.fromMqtt).to.be.undefined;
     });
 
     it('maps pvChargingMinCurrent to the simpleAPI-published minimal_permanent_current topic', () => {

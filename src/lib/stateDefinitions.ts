@@ -210,11 +210,9 @@ export const CHARGEPOINT_READ_FIELDS: ReadFieldDef[] = [
         'pv_charging_limit_amount',
     ),
     num('pv_charging_soc', 'pvChargingSoc', 'PV charging SoC limit', 'value.battery', '%', 'pv_charging_limit_soc'),
-    // Raw MQTT value is EUR/Wh - scaled to ct/kWh to match the writable control's own unit.
-    {
-        ...num('max_price_eco', 'maxPriceEco', 'ECO mode max price', 'value', 'ct/kWh'),
-        fromMqtt: value => Math.round(Number(value) * 100000),
-    },
+    // openWB publishes this already in ct/kWh since openWB/core#4195 - no scaling needed here
+    // (unlike the set/charge_template echo below, which mirrors the raw EUR/Wh internal value).
+    num('max_price_eco', 'maxPriceEco', 'ECO mode max price', 'value', 'ct/kWh'),
     // Flat bare "soc" reads empty live - the populated field is under "soc.*". Distinct from
     // pro_soc above (the chargepoint's own reading, not the connected vehicle's).
     num('soc', 'soc', 'Connected vehicle state of charge', 'value.battery', '%', 'soc/soc'),
@@ -420,7 +418,8 @@ export const CHARGEPOINT_CONTROL_LIVE_FIELDS: ControlLiveSource[] = [
         type: 'number',
     },
     {
-        // Same EUR/Wh -> ct/kWh scale as the HTTP write side - see maxPriceEco above.
+        // Raw mirror of the internal charge_template JSON (still EUR/Wh) - unlike the computed
+        // max_price_eco field above, openWB/core#4195 doesn't touch this topic.
         controlStateId: 'maxPriceEco',
         mqttField: 'set/charge_template/chargemode/eco_charging/max_price',
         type: 'number',
