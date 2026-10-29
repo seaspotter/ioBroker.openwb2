@@ -125,6 +125,13 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+- (SeaSpotter) Fixed `chargepoint.<id>.control.maxPriceEco` reading 100,000x too large - openWB
+  now publishes it already in ct/kWh (openWB/core#4195); our adapter's own scaling, which used to
+  compensate for openWB previously publishing the raw EUR/Wh value, would otherwise double-convert
+  it.
+
 ### 0.3.7 (2026-10-23)
 
 - (SeaSpotter) Fixed mistranslated admin UI strings across all 10 non-English languages -
