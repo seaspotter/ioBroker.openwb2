@@ -1,8 +1,21 @@
 {
     "common": {
         "name": "openwb2",
-        "version": "0.3.7",
+        "version": "0.3.8",
         "news": {
+            "0.3.8": {
+                "en": "* Fixed `chargepoint.<id>.control.maxPriceEco` reading 100,000x too large - openWB now publishes it already in ct/kWh (openWB/core#4195); our adapter's own scaling, which used to compensate for openWB previously publishing the raw EUR/Wh value, would otherwise double-convert it.",
+                "de": "* `chargepoint.<id>.control.maxPriceEco` las sich 100.000-fach zu groß - openWB veröffentlicht den Wert jetzt bereits in ct/kWh (openWB/core#4195); die eigene Umrechnung des Adapters, die bisher den von openWB zuvor veröffentlichten rohen EUR/Wh-Wert ausglich, hätte ihn sonst doppelt umgerechnet.",
+                "ru": "* Исправлено значение `chargepoint.<id>.control.maxPriceEco`, которое читалось в 100 000 раз завышенным - openWB теперь публикует его уже в ct/kWh (openWB/core#4195); собственное масштабирование адаптера, ранее компенсировавшее публикацию openWB необработанного значения в EUR/Wh, иначе преобразовало бы его дважды.",
+                "pt": "* Corrigido `chargepoint.<id>.control.maxPriceEco`, que era lido 100.000 vezes maior - o openWB agora publica o valor já em ct/kWh (openWB/core#4195); a própria escala do adaptador, que antes compensava o valor bruto em EUR/Wh publicado anteriormente pelo openWB, teria convertido o valor duas vezes.",
+                "nl": "* `chargepoint.<id>.control.maxPriceEco` werd 100.000 keer te groot gelezen - openWB publiceert de waarde nu al in ct/kWh (openWB/core#4195); de eigen schaling van de adapter, die voorheen de rauwe EUR/Wh-waarde van openWB compenseerde, zou de waarde anders dubbel omrekenen.",
+                "fr": "* Correction de `chargepoint.<id>.control.maxPriceEco`, lu 100 000 fois trop grand - openWB publie désormais la valeur déjà en ct/kWh (openWB/core#4195) ; la propre mise à l'échelle de l'adaptateur, qui compensait auparavant la valeur brute en EUR/Wh publiée par openWB, l'aurait sinon convertie deux fois.",
+                "it": "* Corretto `chargepoint.<id>.control.maxPriceEco`, letto 100.000 volte troppo grande - openWB ora pubblica il valore già in ct/kWh (openWB/core#4195); la scalatura propria dell'adattatore, che prima compensava il valore grezzo in EUR/Wh pubblicato da openWB, altrimenti lo avrebbe convertito due volte.",
+                "es": "* Se corrigió `chargepoint.<id>.control.maxPriceEco`, que se leía 100.000 veces demasiado grande - openWB ahora publica el valor ya en ct/kWh (openWB/core#4195); el propio escalado del adaptador, que antes compensaba el valor bruto en EUR/Wh publicado por openWB, lo habría convertido dos veces.",
+                "pl": "* Naprawiono `chargepoint.<id>.control.maxPriceEco`, który odczytywał wartość 100 000 razy za dużą - openWB publikuje teraz wartość już w ct/kWh (openWB/core#4195); własne skalowanie adaptera, które wcześniej kompensowało surową wartość EUR/Wh publikowaną przez openWB, w przeciwnym razie przeliczyłoby ją podwójnie.",
+                "uk": "* Виправлено `chargepoint.<id>.control.maxPriceEco`, значення якого читалося у 100 000 разів завищеним - openWB тепер публікує значення вже в ct/kWh (openWB/core#4195); власне масштабування адаптера, яке раніше компенсувало сире значення в EUR/Wh, опубліковане openWB, інакше перетворило б його двічі.",
+                "zh-cn": "* 修复了 `chargepoint.<id>.control.maxPriceEco` 读数偏大 100,000 倍的问题 - openWB 现在已经以 ct/kWh 发布该值(openWB/core#4195);适配器自身原本用于补偿 openWB 此前发布的原始 EUR/Wh 值的换算,否则会导致该值被重复转换。"
+            },
             "0.3.7": {
                 "en": "* Fixed mistranslated admin UI strings across all 10 non-English languages (e.g. \"ID\" read as an ID card, \"Advanced\" as in cutting-edge, \"Probe now\" as a medical/space probe, and a sentence in Dutch/Russian/Ukrainian/Chinese that misread \"name counters...\" as a noun instead of an instruction).",
                 "de": "* Fehlerhafte Übersetzungen der Admin-Oberfläche in allen 10 nicht-englischen Sprachen korrigiert (z. B. „ID” als Ausweis, „Advanced” als „fortschrittlich” statt „erweitert”, „Probe now” als wörtliche Sonde, sowie ein Satz in Niederländisch/Russisch/Ukrainisch/Chinesisch, in dem „name counters…” fälschlich als Substantiv statt als Anweisung gelesen wurde).",
@@ -80,19 +93,6 @@
                 "pl": "* Naprawiono niekontrolowany timer pozostawiany przez test MQTT \"Testuj połączenie\". Różne poprawki pakowania/CI dla zgodności z repozytorium ioBroker.",
                 "uk": "* Виправлено неконтрольований таймер, що залишався після MQTT-перевірки «Перевірити з'єднання». Різні виправлення пакування/CI для відповідності репозиторію ioBroker.",
                 "zh-cn": "* 修复了\"测试连接\"MQTT 探测遗留未跟踪定时器的问题。进行了多项打包/CI 修复以符合 ioBroker 仓库要求。"
-            },
-            "0.3.1": {
-                "en": "* Fixed `chargepoint.<id>.control`/`battery.<id>.control` channel names never updating on an existing installation.",
-                "de": "* Die Namen der Kanäle `chargepoint.<id>.control`/`battery.<id>.control` wurden korrigiert, die sich bei einer bestehenden Installation nie aktualisierten.",
-                "ru": "* Исправлены названия каналов `chargepoint.<id>.control`/`battery.<id>.control`, которые никогда не обновлялись на существующей установке.",
-                "pt": "* Corrigidos os nomes dos canais `chargepoint.<id>.control`/`battery.<id>.control` que nunca eram atualizados numa instalação existente.",
-                "nl": "* De namen van de kanalen `chargepoint.<id>.control`/`battery.<id>.control` zijn gerepareerd, die nooit werden bijgewerkt op een bestaande installatie.",
-                "fr": "* Correction des noms des canaux `chargepoint.<id>.control`/`battery.<id>.control` qui ne se mettaient jamais à jour sur une installation existante.",
-                "it": "* Corretti i nomi dei canali `chargepoint.<id>.control`/`battery.<id>.control` che non venivano mai aggiornati su un'installazione esistente.",
-                "es": "* Corregidos los nombres de los canales `chargepoint.<id>.control`/`battery.<id>.control` que nunca se actualizaban en una instalación existente.",
-                "pl": "* Naprawiono nazwy kanałów `chargepoint.<id>.control`/`battery.<id>.control`, które nigdy nie aktualizowały się w istniejącej instalacji.",
-                "uk": "* Виправлено назви каналів `chargepoint.<id>.control`/`battery.<id>.control`, які ніколи не оновлювалися в існуючій інсталяції.",
-                "zh-cn": "* 修复了 `chargepoint.<id>.control`/`battery.<id>.control` 通道名称在现有安装中从不更新的问题。"
             }
         },
         "titleLang": {
@@ -121,8 +121,16 @@
             "uk": "Зчитує зарядні точки, лічильники, батарею, PV та споживачів з контролера openWB 2 wallbox у прямому ефірі через MQTT і дозволяє вам контролювати зарядку через його HTTP-інтерфейс simpleAPI.",
             "zh-cn": "通过 MQTT 从 openWB 2 墙盒控制器实时读取充电点、计数器、电池、PV 和消费者，并让您通过其 simpleAPI HTTP 接口控制充电"
         },
-        "authors": ["SeaSpotter <seatowage@gmail.com>"],
-        "keywords": ["openwb", "ev-charging", "wallbox", "simpleapi", "pv"],
+        "authors": [
+            "SeaSpotter <seatowage@gmail.com>"
+        ],
+        "keywords": [
+            "openwb",
+            "ev-charging",
+            "wallbox",
+            "simpleapi",
+            "pv"
+        ],
         "licenseInformation": {
             "type": "free",
             "license": "MIT"
@@ -171,8 +179,16 @@
         "componentTable": "[]",
         "energyUnit": "Wh"
     },
-    "encryptedNative": ["token", "password", "mqttPassword"],
-    "protectedNative": ["token", "password", "mqttPassword"],
+    "encryptedNative": [
+        "token",
+        "password",
+        "mqttPassword"
+    ],
+    "protectedNative": [
+        "token",
+        "password",
+        "mqttPassword"
+    ],
     "objects": [],
     "instanceObjects": [
         {

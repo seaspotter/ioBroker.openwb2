@@ -124,8 +124,7 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.3.8 (2026-10-29)
 
 - (SeaSpotter) Fixed `chargepoint.<id>.control.maxPriceEco` reading 100,000x too large - openWB
   now publishes it already in ct/kWh (openWB/core#4195); our adapter's own scaling, which used to
@@ -162,33 +161,6 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
 - (SeaSpotter) "Probe now" (Components tab) now works immediately on a host you've just typed in,
   without having to Save first - it previously only ever saw components the adapter's own
   persistent connection had already observed since its last restart.
-
-### 0.3.3 (2026-10-02)
-
-- (SeaSpotter) Fixed `chargepoint`/`counter`/`battery`/`pv` missing their parent folder object -
-  each `<type>.<id>` channel was an orphan with no `<type>` object above it.
-- (SeaSpotter) Fixed `batPowerReserve`/`instantChargingAmount`/`pvChargingAmount` using roles not in
-  the ioBroker role catalogue (`level.power`/`level.energy` -> `level`).
-- (SeaSpotter) Fixed `consumer.<id>.chargeState` reading empty - the real device publishes it as
-  `get/state`, not `get/charge_state`. Removed `consumer.<id>.phasesInUse`, confirmed live against a
-  real consumer module to have no live equivalent.
-- (SeaSpotter) Added `consumer.<id>.linkedCounterId` (which counter this consumer's metering is
-  sourced from) and `consumer.<id>.chargeMode`.
-
-### 0.3.2 (2026-10-02)
-
-- (SeaSpotter) Fixed the admin UI's "Test connection" MQTT probe leaking a bare, untracked timer.
-- (SeaSpotter) Various packaging/CI fixes for ioBroker repository compliance (dependency versions,
-  workflow ordering, Dependabot cooldown and automerge for patch/minor updates).
-
-### 0.3.1 (2026-10-02)
-
-- (SeaSpotter) Fixed `chargepoint.<id>.control`/`battery.<id>.control` channel names never
-  updating on an existing installation.
-
-### 0.3.0 (2026-10-02)
-
-- (SeaSpotter) Migrated the admin UI to `@iobroker/gui-components` (React 19, MUI 9).
 
 Older versions are listed in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

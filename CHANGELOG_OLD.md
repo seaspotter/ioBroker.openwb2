@@ -47,3 +47,29 @@ the current changelog.
 ### 0.0.1 (2026-09-21)
 
 - (SeaSpotter) initial release
+## 0.3.3 (2026-10-02)
+
+- (SeaSpotter) Fixed `chargepoint`/`counter`/`battery`/`pv` missing their parent folder object -
+  each `<type>.<id>` channel was an orphan with no `<type>` object above it.
+- (SeaSpotter) Fixed `batPowerReserve`/`instantChargingAmount`/`pvChargingAmount` using roles not in
+  the ioBroker role catalogue (`level.power`/`level.energy` -> `level`).
+- (SeaSpotter) Fixed `consumer.<id>.chargeState` reading empty - the real device publishes it as
+  `get/state`, not `get/charge_state`. Removed `consumer.<id>.phasesInUse`, confirmed live against a
+  real consumer module to have no live equivalent.
+- (SeaSpotter) Added `consumer.<id>.linkedCounterId` (which counter this consumer's metering is
+  sourced from) and `consumer.<id>.chargeMode`.
+
+## 0.3.2 (2026-10-02)
+
+- (SeaSpotter) Fixed the admin UI's "Test connection" MQTT probe leaking a bare, untracked timer.
+- (SeaSpotter) Various packaging/CI fixes for ioBroker repository compliance (dependency versions,
+  workflow ordering, Dependabot cooldown and automerge for patch/minor updates).
+
+## 0.3.1 (2026-10-02)
+
+- (SeaSpotter) Fixed `chargepoint.<id>.control`/`battery.<id>.control` channel names never
+  updating on an existing installation.
+
+## 0.3.0 (2026-10-02)
+
+- (SeaSpotter) Migrated the admin UI to `@iobroker/gui-components` (React 19, MUI 9).
