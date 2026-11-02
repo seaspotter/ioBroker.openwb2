@@ -174,11 +174,41 @@ export type HomeConsumptionValueListener = (field: ReadFieldDef, value: ioBroker
 export type ConnectionListener = (connected: boolean) => void;
 
 /**
+ * How long an id can go without a new MQTT message before getObservedIds() stops reporting it.
+ * Generous enough to tolerate a genuinely idle/off component (openWB republishes on every value
+ * change, not on a fixed schedule), but short enough that a component removed from openWB doesn't
+ * linger in discovery/"Probe now" results indefinitely - previously only a full adapter restart
+ * cleared it.
+ */
+export const OBSERVED_STALE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Ids from `observed` last seen within `maxAgeMs` of `nowMs`, sorted ascending. Pure so it's
+ * testable without a live MQTT connection - see MqttReader.getObservedIds(), its only caller.
+ *
+ * @param observed - id -> last-seen timestamp (ms since epoch)
+ * @param nowMs - current time (ms since epoch)
+ * @param maxAgeMs - how old a last-seen timestamp may be before the id is considered stale
+ */
+export function freshIds(observed: ReadonlyMap<number, number>, nowMs: number, maxAgeMs: number): number[] {
+    const ids: number[] = [];
+    for (const [id, lastSeenMs] of observed) {
+        if (nowMs - lastSeenMs <= maxAgeMs) {
+            ids.push(id);
+        }
+    }
+    return ids.sort((a, b) => a - b);
+}
+
+/**
  * Live MQTT read path: one persistent connection, subscribed to `openWB/simpleAPI/#` (per type).
  * Writes stay on SimpleApiClient/HTTP regardless - the two are independent.
  *
- * Also tracks every `(type, id)` it has ever seen a message for, indefinitely, so discovery
- * (`getObservedIds`) is free/instant - no separate probe request needed.
+ * Also tracks every `(type, id)` it has seen a message for - see `getObservedIds()` - so discovery
+ * is free/instant, no separate probe request needed. Entries are keyed by last-seen time, not just
+ * presence: `getObservedIds()` drops anything older than OBSERVED_STALE_MS, and every entry is
+ * cleared outright on (re)connect, since the retained-message flood that follows resubscribing is
+ * the authoritative current snapshot of what still exists.
  */
 export class MqttReader {
     private client: MqttClient | undefined;
@@ -187,12 +217,12 @@ export class MqttReader {
     private readonly totalValueListeners = new Set<TotalValueListener>();
     private readonly homeConsumptionValueListeners = new Set<HomeConsumptionValueListener>();
     private readonly connectionListeners = new Set<ConnectionListener>();
-    private readonly observed: Record<ComponentType, Set<number>> = {
-        chargepoint: new Set(),
-        counter: new Set(),
-        battery: new Set(),
-        pv: new Set(),
-        consumer: new Set(),
+    private readonly observed: Record<ComponentType, Map<number, number>> = {
+        chargepoint: new Map(),
+        counter: new Map(),
+        battery: new Map(),
+        pv: new Map(),
+        consumer: new Map(),
     };
 
     public constructor(private readonly log: ioBroker.Log) {}
@@ -209,6 +239,12 @@ export class MqttReader {
 
         this.client.on('connect', () => {
             this.log.info(`Connected to MQTT broker at ${cfg.host}:${cfg.port}`);
+            // Resubscribing triggers the broker to redeliver every matching retained message -
+            // the authoritative current snapshot - so a stale id from a previous connection can't
+            // survive a reconnect even if it hasn't aged out of OBSERVED_STALE_MS yet.
+            for (const type of COMPONENT_TYPES) {
+                this.observed[type].clear();
+            }
             const filters = [...SIMPLE_API_SUBSCRIBE_FILTERS, REVISION_TOPIC];
             this.client?.subscribe(filters, err => {
                 if (err) {
@@ -254,11 +290,15 @@ export class MqttReader {
         }
     }
 
-    /** Every `(type, id)` ever observed, regardless of whether it's in the enabled component table. */
+    /**
+     * Every `(type, id)` seen within OBSERVED_STALE_MS, regardless of whether it's in the enabled
+     * component table.
+     */
     public getObservedIds(): ComponentIds {
+        const now = Date.now();
         const ids = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] } as ComponentIds;
         for (const type of COMPONENT_TYPES) {
-            ids[type] = [...this.observed[type]].sort((a, b) => a - b);
+            ids[type] = freshIds(this.observed[type], now, OBSERVED_STALE_MS);
         }
         return ids;
     }
@@ -282,7 +322,7 @@ export class MqttReader {
             return;
         }
 
-        this.observed[parsed.type].add(parsed.id);
+        this.observed[parsed.type].set(parsed.id, Date.now());
         const normalized = normalizeMqttValue(payload);
 
         const field = MQTT_FIELD_LOOKUP[parsed.type].get(parsed.fieldPath);

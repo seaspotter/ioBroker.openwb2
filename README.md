@@ -124,6 +124,14 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+- (SeaSpotter) Fixed component rows reappearing right after being deleted (e.g. a removed counter)
+  - the adapter's live MQTT connection tracked every component id it had ever seen, indefinitely,
+  so "Probe now" and the background discovery check kept re-adding ids long after the underlying
+  openWB component was gone. Stale ids now expire after 24h of silence, and the full set is reset
+  on every (re)connect.
+
 ### 0.3.8 (2026-10-29)
 
 - (SeaSpotter) Fixed `chargepoint.<id>.control.maxPriceEco` reading 100,000x too large - openWB
