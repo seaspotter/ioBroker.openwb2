@@ -124,7 +124,7 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.3.9 (2026-11-02)
 
 - (SeaSpotter) Fixed component rows reappearing right after being deleted (e.g. a removed counter)
   - the adapter's live MQTT connection tracked every component id it had ever seen, indefinitely,
@@ -163,12 +163,6 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
 
 - (SeaSpotter) Added the required `ioBroker` keyword to `package.json`, and trimmed old changelog
   entries from `io-package.json` so the ioBroker repository builder doesn't truncate them.
-
-### 0.3.4 (2026-10-02)
-
-- (SeaSpotter) "Probe now" (Components tab) now works immediately on a host you've just typed in,
-  without having to Save first - it previously only ever saw components the adapter's own
-  persistent connection had already observed since its last restart.
 
 Older versions are listed in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 
