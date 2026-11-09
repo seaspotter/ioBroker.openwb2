@@ -47,6 +47,11 @@ the current changelog.
 ### 0.0.1 (2026-09-21)
 
 - (SeaSpotter) initial release
+## 0.3.5 (2026-10-02)
+
+- (SeaSpotter) Added the required `ioBroker` keyword to `package.json`, and trimmed old changelog
+  entries from `io-package.json` so the ioBroker repository builder doesn't truncate them.
+
 ## 0.3.4 (2026-10-02)
 
 - (SeaSpotter) "Probe now" (Components tab) now works immediately on a host you've just typed in,
