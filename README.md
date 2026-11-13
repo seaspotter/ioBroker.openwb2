@@ -124,13 +124,6 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
-
-- (SeaSpotter) `test-and-release.yml`'s `push` trigger declares `branches: main` again (satisfying
-  the ioBroker repository checker's E3007 rule), but each job's own condition still skips the
-  expensive checks on a plain push to main - that commit was already tested on its merged pull
-  request, so there's no need to run the full matrix twice.
-
 ### 0.3.10 (2026-11-09)
 
 - (SeaSpotter) Bumped `axios` to 1.21.0 - reviewed the changelog; the only breaking change (custom
