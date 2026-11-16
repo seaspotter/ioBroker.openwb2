@@ -89,10 +89,7 @@ describe('buildMqttFieldLookup', () => {
         );
     });
 
-    it('maps pvChargingLimit/Amount/Soc to the not-yet-upstream simpleAPI field names', () => {
-        // Not on mainline openWB/core yet - see CHARGEPOINT_READ_FIELDS' comment above these
-        // entries. Same field names the writable pvChargingLimit/Amount/Soc controls' upstream
-        // write support assumes will land.
+    it('maps pvChargingLimit/Amount/Soc to their simpleAPI field names', () => {
         const lookup = buildMqttFieldLookup(CHARGEPOINT_READ_FIELDS);
         expect(lookup.get('pv_charging_limit')?.stateId).to.equal('pvChargingLimit');
         expect(lookup.get('pv_charging_limit_amount')?.stateId).to.equal('pvChargingAmount');

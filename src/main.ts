@@ -31,6 +31,7 @@ import {
     MAX_TIMER_MS,
     MIN_INTERVAL_MS,
     DEFAULT_DISCOVERY_INTERVAL_MIN,
+    emptyComponentIds,
     type ComponentType,
     type ComponentIds,
 } from './lib/constants';
@@ -62,7 +63,7 @@ interface ControlBinding {
 class Openwb2 extends utils.Adapter {
     private client!: SimpleApiClient;
     private mqttReader!: MqttReader;
-    private componentIds: ComponentIds = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] };
+    private componentIds: ComponentIds = emptyComponentIds();
     private totalEnabled: Record<TotalType, boolean> = { pv: false, chargepoint: false };
     private readonly controlBindings = new Map<string, ControlBinding>();
     private discoveryTimer: ioBroker.Interval | undefined;
@@ -194,11 +195,8 @@ class Openwb2 extends utils.Adapter {
     }
 
     /**
-     * Validates a configurable interval against Node's setTimeout/setInterval max delay
-     * (2^31 - 1 ms) - an out-of-range or invalid value would otherwise produce unpredictable
-     * timer behavior instead of the expected interval. Also enforces MIN_INTERVAL_MS so a
-     * fractional-minute config value (e.g. `discoveryIntervalMin: 0.001`) can't turn into a
-     * sub-second loop hammering the device.
+     * Clamps a configured interval to Node's timer limits and MIN_INTERVAL_MS, so an invalid or
+     * fractional-minute value can't produce unpredictable or sub-second timer behavior.
      *
      * @param raw - configured interval in ms
      * @param fallback - value to use if raw is invalid
@@ -210,7 +208,7 @@ class Openwb2 extends utils.Adapter {
         return Math.max(raw, MIN_INTERVAL_MS);
     }
 
-    /** Deletes objects left over from an earlier dev build of this adapter - safe no-op if absent. */
+    /** Deletes objects from the pre-0.1.0 HTTP-polling layout, replaced by MQTT reads in 0.1.0. */
     private async removeLegacyObjects(): Promise<void> {
         await this.delObjectAsync('general', { recursive: true }).catch(() => undefined);
         await this.delObjectAsync('homeConsumption', { recursive: true }).catch(() => undefined);
@@ -229,8 +227,7 @@ class Openwb2 extends utils.Adapter {
     }
 
     /**
-     * Deletes chargepoint.<id>.* objects left over from an earlier dev build - safe no-op if
-     * absent.
+     * Deletes chargepoint objects renamed or dropped by the 0.1.0 HTTP-to-MQTT switch.
      *
      * @param chargepointIds - currently enabled chargepoint ids
      */
@@ -255,8 +252,7 @@ class Openwb2 extends utils.Adapter {
     }
 
     /**
-     * Deletes consumer.<id>.phasesInUse objects left over from an earlier dev build - there is no
-     * live readback for it (see CONSUMER_READ_FIELDS' own comment) - safe no-op if absent.
+     * Deletes consumer.<id>.phasesInUse, removed in 0.3.3 (no live equivalent - see CONSUMER_READ_FIELDS).
      *
      * @param consumerIds - currently enabled consumer ids
      */

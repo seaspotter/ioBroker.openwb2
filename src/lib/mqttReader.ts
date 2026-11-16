@@ -1,5 +1,11 @@
 import mqtt, { type MqttClient } from 'mqtt';
-import { COMPONENT_TYPES, type ComponentIds, type ComponentType } from './constants';
+import {
+    COMPONENT_TYPES,
+    perComponentType,
+    emptyComponentIds,
+    type ComponentIds,
+    type ComponentType,
+} from './constants';
 import { normalizeMqttValue } from './mqttValue';
 import {
     SIMPLE_API_SUBSCRIBE_FILTERS,
@@ -30,26 +36,20 @@ export interface MqttConnectionConfig {
     password?: string;
 }
 
-/** The subset of ioBroker.Adapter's timer methods testMqttConnection needs, so its timeout is tracked and cleared like any other adapter timer instead of a bare setTimeout. */
+/** setTimeout/clearTimeout subset, so probe timeouts are tracked like any other adapter timer. */
 export interface AdapterTimers {
     setTimeout: ioBroker.Adapter['setTimeout'];
     clearTimeout: ioBroker.Adapter['clearTimeout'];
 }
 
-/**
- * One-shot connectivity check for the admin UI's "Test connection" button - opens a short-lived
- * connection (separate from the adapter's own persistent one), waits for either a successful
- * connect or an error/timeout, then always disconnects. Never subscribes to anything.
- *
- * @param cfg - MQTT broker connection details
- * @param timers - the calling adapter instance (for its managed setTimeout/clearTimeout)
- * @param timeoutMs - how long to wait before giving up (default 5s)
- */
-export function testMqttConnection(
+/** Shared one-shot-connection/timeout/cleanup plumbing behind testMqttConnection/probeMqttComponents. */
+function runOneShotProbe<T>(
     cfg: MqttConnectionConfig,
     timers: AdapterTimers,
-    timeoutMs = 5000,
-): Promise<{ ok: boolean; error?: string }> {
+    timeoutMs: number,
+    onTimeout: () => T,
+    wire: (client: MqttClient, finish: (result: T) => void) => void,
+): Promise<T> {
     return new Promise(resolve => {
         const client = mqtt.connect(`mqtt://${cfg.host}:${cfg.port}`, {
             username: cfg.username || undefined,
@@ -59,8 +59,8 @@ export function testMqttConnection(
         });
 
         let settled = false;
-        const timeoutHandle = timers.setTimeout(() => finish({ ok: false, error: 'Timed out' }), timeoutMs);
-        function finish(result: { ok: boolean; error?: string }): void {
+        const timeoutHandle = timers.setTimeout(() => finish(onTimeout()), timeoutMs);
+        function finish(result: T): void {
             if (settled) {
                 return;
             }
@@ -70,79 +70,69 @@ export function testMqttConnection(
             resolve(result);
         }
 
-        client.on('connect', () => finish({ ok: true }));
-        client.on('error', err => finish({ ok: false, error: err.message }));
+        wire(client, finish);
     });
 }
 
+/** One-shot connectivity check for the admin UI's "Test connection" button. Never subscribes to anything. */
+export function testMqttConnection(
+    cfg: MqttConnectionConfig,
+    timers: AdapterTimers,
+    timeoutMs = 5000,
+): Promise<{ ok: boolean; error?: string }> {
+    return runOneShotProbe<{ ok: boolean; error?: string }>(
+        cfg,
+        timers,
+        timeoutMs,
+        () => ({ ok: false, error: 'Timed out' }),
+        (client, finish) => {
+            client.on('connect', () => finish({ ok: true }));
+            client.on('error', err => finish({ ok: false, error: err.message }));
+        },
+    );
+}
+
 /**
- * One-shot component discovery for the admin UI's "Probe now" button when there's no persistent
- * connection to rely on yet (a brand-new instance, or a host just typed in but not yet saved) -
- * opens a short-lived connection (separate from the adapter's own persistent one), subscribes to
- * every simpleAPI topic, collects whatever retained messages arrive within `timeoutMs`, then always
- * disconnects. Unlike MqttReader.getObservedIds(), this needs no prior Save/restart to see
- * anything, at the cost of a real network round-trip each time it's called.
- *
- * @param cfg - MQTT broker connection details
- * @param timers - the calling adapter instance (for its managed setTimeout/clearTimeout)
- * @param timeoutMs - how long to wait for retained messages to arrive (default 3s - they land
- *   within milliseconds of subscribing, this is just a safety margin)
+ * One-shot component discovery for "Probe now" when there's no persistent connection yet (a new
+ * instance, or a host just typed in but not saved) - unlike MqttReader.getObservedIds(), needs no
+ * prior Save/restart, at the cost of a real network round-trip each call.
  */
 export function probeMqttComponents(
     cfg: MqttConnectionConfig,
     timers: AdapterTimers,
     timeoutMs = 3000,
 ): Promise<{ ok: boolean; error?: string; data: ComponentIds }> {
-    return new Promise(resolve => {
-        const observed: Record<ComponentType, Set<number>> = {
-            chargepoint: new Set(),
-            counter: new Set(),
-            battery: new Set(),
-            pv: new Set(),
-            consumer: new Set(),
-        };
-        const toComponentIds = (): ComponentIds => {
-            const ids = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] } as ComponentIds;
-            for (const type of COMPONENT_TYPES) {
-                ids[type] = [...observed[type]].sort((a, b) => a - b);
-            }
-            return ids;
-        };
-
-        const client = mqtt.connect(`mqtt://${cfg.host}:${cfg.port}`, {
-            username: cfg.username || undefined,
-            password: cfg.password || undefined,
-            connectTimeout: timeoutMs,
-            reconnectPeriod: 0, // this is a one-shot probe - never auto-reconnect
-        });
-
-        let settled = false;
-        const timeoutHandle = timers.setTimeout(() => finish({ ok: true, data: toComponentIds() }), timeoutMs);
-        function finish(result: { ok: boolean; error?: string; data: ComponentIds }): void {
-            if (settled) {
-                return;
-            }
-            settled = true;
-            timers.clearTimeout(timeoutHandle);
-            client.end(true);
-            resolve(result);
+    const observed = perComponentType<Set<number>>(() => new Set());
+    const toComponentIds = (): ComponentIds => {
+        const ids = emptyComponentIds();
+        for (const type of COMPONENT_TYPES) {
+            ids[type] = [...observed[type]].sort((a, b) => a - b);
         }
+        return ids;
+    };
 
-        client.on('connect', () => {
-            client.subscribe(SIMPLE_API_SUBSCRIBE_FILTERS, err => {
-                if (err) {
-                    finish({ ok: false, error: err.message, data: toComponentIds() });
+    return runOneShotProbe<{ ok: boolean; error?: string; data: ComponentIds }>(
+        cfg,
+        timers,
+        timeoutMs,
+        () => ({ ok: true, data: toComponentIds() }),
+        (client, finish) => {
+            client.on('connect', () => {
+                client.subscribe(SIMPLE_API_SUBSCRIBE_FILTERS, err => {
+                    if (err) {
+                        finish({ ok: false, error: err.message, data: toComponentIds() });
+                    }
+                });
+            });
+            client.on('error', err => finish({ ok: false, error: err.message, data: toComponentIds() }));
+            client.on('message', topic => {
+                const parsed = parseSimpleApiTopic(topic);
+                if (parsed) {
+                    observed[parsed.type].add(parsed.id);
                 }
             });
-        });
-        client.on('error', err => finish({ ok: false, error: err.message, data: toComponentIds() }));
-        client.on('message', topic => {
-            const parsed = parseSimpleApiTopic(topic);
-            if (parsed) {
-                observed[parsed.type].add(parsed.id);
-            }
-        });
-    });
+        },
+    );
 }
 
 const MQTT_FIELD_LOOKUP: Record<ComponentType, Map<string, ReadFieldDef>> = {
@@ -173,23 +163,10 @@ export type TotalValueListener = (type: TotalType, field: ReadFieldDef, value: i
 export type HomeConsumptionValueListener = (field: ReadFieldDef, value: ioBroker.StateValue) => void;
 export type ConnectionListener = (connected: boolean) => void;
 
-/**
- * How long an id can go without a new MQTT message before getObservedIds() stops reporting it.
- * Generous enough to tolerate a genuinely idle/off component (openWB republishes on every value
- * change, not on a fixed schedule), but short enough that a component removed from openWB doesn't
- * linger in discovery/"Probe now" results indefinitely - previously only a full adapter restart
- * cleared it.
- */
+/** How long an id can go without a message before getObservedIds() stops reporting it. */
 export const OBSERVED_STALE_MS = 24 * 60 * 60 * 1000;
 
-/**
- * Ids from `observed` last seen within `maxAgeMs` of `nowMs`, sorted ascending. Pure so it's
- * testable without a live MQTT connection - see MqttReader.getObservedIds(), its only caller.
- *
- * @param observed - id -> last-seen timestamp (ms since epoch)
- * @param nowMs - current time (ms since epoch)
- * @param maxAgeMs - how old a last-seen timestamp may be before the id is considered stale
- */
+/** Ids from `observed` last seen within `maxAgeMs` of `nowMs`, sorted ascending. */
 export function freshIds(observed: ReadonlyMap<number, number>, nowMs: number, maxAgeMs: number): number[] {
     const ids: number[] = [];
     for (const [id, lastSeenMs] of observed) {
@@ -201,14 +178,9 @@ export function freshIds(observed: ReadonlyMap<number, number>, nowMs: number, m
 }
 
 /**
- * Live MQTT read path: one persistent connection, subscribed to `openWB/simpleAPI/#` (per type).
- * Writes stay on SimpleApiClient/HTTP regardless - the two are independent.
- *
- * Also tracks every `(type, id)` it has seen a message for - see `getObservedIds()` - so discovery
- * is free/instant, no separate probe request needed. Entries are keyed by last-seen time, not just
- * presence: `getObservedIds()` drops anything older than OBSERVED_STALE_MS, and every entry is
- * cleared outright on (re)connect, since the retained-message flood that follows resubscribing is
- * the authoritative current snapshot of what still exists.
+ * Live MQTT read path: one persistent connection, subscribed to `openWB/simpleAPI/#`. Writes stay
+ * on SimpleApiClient/HTTP. Also tracks every `(type, id)` seen a message for, so discovery
+ * (`getObservedIds()`) is free - entries expire after OBSERVED_STALE_MS and are cleared on connect.
  */
 export class MqttReader {
     private client: MqttClient | undefined;
@@ -217,13 +189,7 @@ export class MqttReader {
     private readonly totalValueListeners = new Set<TotalValueListener>();
     private readonly homeConsumptionValueListeners = new Set<HomeConsumptionValueListener>();
     private readonly connectionListeners = new Set<ConnectionListener>();
-    private readonly observed: Record<ComponentType, Map<number, number>> = {
-        chargepoint: new Map(),
-        counter: new Map(),
-        battery: new Map(),
-        pv: new Map(),
-        consumer: new Map(),
-    };
+    private readonly observed = perComponentType<Map<number, number>>(() => new Map());
 
     public constructor(private readonly log: ioBroker.Log) {}
 
@@ -239,9 +205,7 @@ export class MqttReader {
 
         this.client.on('connect', () => {
             this.log.info(`Connected to MQTT broker at ${cfg.host}:${cfg.port}`);
-            // Resubscribing triggers the broker to redeliver every matching retained message -
-            // the authoritative current snapshot - so a stale id from a previous connection can't
-            // survive a reconnect even if it hasn't aged out of OBSERVED_STALE_MS yet.
+            // Resubscribing redelivers every retained message, the current source of truth.
             for (const type of COMPONENT_TYPES) {
                 this.observed[type].clear();
             }
@@ -296,7 +260,7 @@ export class MqttReader {
      */
     public getObservedIds(): ComponentIds {
         const now = Date.now();
-        const ids = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] } as ComponentIds;
+        const ids = emptyComponentIds();
         for (const type of COMPONENT_TYPES) {
             ids[type] = freshIds(this.observed[type], now, OBSERVED_STALE_MS);
         }

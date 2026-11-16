@@ -79,7 +79,6 @@ class App extends GenericApp {
                             onChange={onNativeChange}
                             socket={this.socket}
                             instanceId={this.instanceId}
-                            onToast={text => this.showToast(text)}
                         />
                     )}
                     {this.tab === 1 && (
