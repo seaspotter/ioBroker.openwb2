@@ -126,7 +126,7 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.4.0 (2026-11-16)
 
 - (SeaSpotter) Code cleanup: removed duplicated logic (shared helpers for building an empty
   per-component-type collection, stripping an MQTT topic's `get/` prefix, and the one-shot
@@ -169,12 +169,6 @@ see `.github/workflows/test-and-release.yml`. To get the adapter listed in the i
   ("name-counters") in Dutch, Russian, Ukrainian and Chinese. Also fixed several button labels
   using the wrong grammatical mood for their language's UI convention, wrong grammatical gender,
   and French's `Type` column header mistranslated as "Taper" ("to type on a keyboard").
-
-### 0.3.6 (2026-10-23)
-
-- (SeaSpotter) Added a minimum 10-second lower bound to the **New-device check interval**
-  (Components tab) - a mistyped fractional value could previously poll the device far more often
-  than intended.
 
 Older versions are listed in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 
