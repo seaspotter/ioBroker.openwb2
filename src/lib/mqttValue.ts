@@ -1,15 +1,8 @@
 /**
- * Normalizes a raw MQTT payload string from `openWB/simpleAPI/#` into a JS value. Verified against
- * a real device's actual wire values (read-only `mosquitto_sub` capture, not guessed): value
- * encoding there is inconsistent, not uniformly JSON -
- *   - numbers and `null` are plain and valid JSON as-is
- *   - some strings are properly JSON-encoded, e.g. `"Kein Fehler."` (with quotes)
- *   - other strings arrive bare/unquoted, e.g. `pv_charging`, `km`, even `Renault Megane` (a bare
- *     string containing a space)
- *   - booleans arrive as Python's `True`/`False` (capitalized) rather than JSON's `true`/`false`
- * This order handles every shape actually observed: try JSON.parse first (catches numbers, null,
- * quoted strings, and the rare lowercase true/false), map the Python-style capitalized booleans
- * explicitly, and fall back to the trimmed raw string for anything else (bare/unquoted strings).
+ * Normalizes a raw MQTT payload into a JS value. Wire encoding is inconsistent (confirmed live):
+ * numbers/null/quoted strings are valid JSON, bare strings aren't (`pv_charging`, `Renault Megane`),
+ * and booleans arrive as Python's `True`/`False`. Tries JSON.parse first, maps `True`/`False`
+ * explicitly, falls back to the trimmed raw string.
  *
  * @param raw - raw MQTT payload as a string
  */

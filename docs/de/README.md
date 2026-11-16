@@ -4,6 +4,8 @@
 
 ## openwb2 Adapter für ioBroker
 
+*This guide is also available [in English](../../README.md).*
+
 Liest Ladepunkte, Zähler, Batterie, PV und Verbraucher von einem [openWB](https://openwb.de) 2
 Wallbox-Controller live über MQTT aus und ermöglicht die Steuerung des Ladevorgangs über dessen
 `simpleAPI`-HTTP-Schnittstelle - direkt aus ioBroker heraus.

@@ -8,7 +8,7 @@
  * directory) - same pattern as iobroker.meterops' lib/registry-json.ts.
  */
 
-import { COMPONENT_TYPES, type ComponentType, type ComponentIds } from './constants';
+import { COMPONENT_TYPES, emptyComponentIds, type ComponentType, type ComponentIds } from './constants';
 
 export interface ComponentTableRow {
     type: ComponentType;
@@ -74,7 +74,7 @@ export function serializeComponentTable(rows: ComponentTableRow[]): string {
  * @param rows - parsed component table
  */
 export function enabledIdsByType(rows: ComponentTableRow[]): ComponentIds {
-    const ids: ComponentIds = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] };
+    const ids = emptyComponentIds();
     for (const row of rows) {
         if (row.enabled) {
             ids[row.type].push(row.id);
@@ -96,7 +96,7 @@ export function enabledIdsByType(rows: ComponentTableRow[]): ComponentIds {
  * @param b - second set
  */
 export function mergeComponentIds(a: ComponentIds, b: ComponentIds): ComponentIds {
-    const merged: ComponentIds = { chargepoint: [], counter: [], battery: [], pv: [], consumer: [] };
+    const merged = emptyComponentIds();
     for (const type of COMPONENT_TYPES) {
         merged[type] = [...new Set([...a[type], ...b[type]])].sort((x, y) => x - y);
     }
@@ -104,18 +104,9 @@ export function mergeComponentIds(a: ComponentIds, b: ComponentIds): ComponentId
 }
 
 /**
- * Merges freshly discovered component IDs into the existing table: adds a new, disabled row for
- * every (type, id) not already present as a row (regardless of that existing row's enabled
- * state), and never touches or removes any existing row. This is the whole answer to "how do we
- * know an ID was already there, and what happens when one disappears": the table's row set *is*
- * the "already known" record, discovery only ever proposes additions to it, and a row that a
- * fresh discovery no longer reports simply isn't touched - the caller can flag that in the UI
- * without this function needing to decide anything about it.
- *
- * New rows start disabled rather than enabled - discovery (whether a manual "Probe now" or the
- * background interval check) should only ever *propose* a component, never activate it on its
- * own. Enabling it (and thus creating its objects/starting to poll it) is the user's own explicit
- * choice, ticked in the Components tab and confirmed with Save.
+ * Adds a new, disabled row for every discovered (type, id) not already in the table; never
+ * touches or removes an existing row. Disabled by default - enabling is the user's own choice in
+ * the Components tab, not something discovery does on its own.
  *
  * @param rows - existing table rows
  * @param discovered - freshly discovered component IDs, e.g. from MqttReader.getObservedIds()

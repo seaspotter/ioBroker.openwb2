@@ -15,6 +15,20 @@ export type ComponentType = (typeof COMPONENT_TYPES)[number];
 /** Component IDs per type - what MqttReader observes and componentTable.ts persists. */
 export type ComponentIds = Record<ComponentType, number[]>;
 
+/** Builds a `Record<ComponentType, T>`, calling `factory` once per type. */
+export function perComponentType<T>(factory: () => T): Record<ComponentType, T> {
+    const result = {} as Record<ComponentType, T>;
+    for (const type of COMPONENT_TYPES) {
+        result[type] = factory();
+    }
+    return result;
+}
+
+/** A ComponentIds with every type mapped to an empty array. */
+export function emptyComponentIds(): ComponentIds {
+    return perComponentType(() => []);
+}
+
 /**
  * Node's setTimeout/setInterval accept at most a 32-bit signed delay (2^31 - 1 ms, ~24.8 days) -
  * a larger or invalid value runs immediately/unpredictably instead of after the expected delay.

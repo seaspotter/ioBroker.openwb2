@@ -199,7 +199,7 @@ export const CHARGEPOINT_READ_FIELDS: ReadFieldDef[] = [
         '%',
         'instant_charging_limit_soc',
     ),
-    // Not yet on mainline openWB/core - see README.
+    // Exists upstream now, not yet live-verified.
     str('pv_charging_limit', 'pvChargingLimit', 'PV charging limit type'),
     num(
         'pv_charging_amount',
@@ -637,12 +637,8 @@ export function commonFromReadField(field: ReadFieldDef, energyUnit: EnergyUnit 
 export type EnergyUnit = 'Wh' | 'kWh';
 
 /**
- * Scales a Wh-denominated field's value for display, per the instance-wide energyUnit setting -
- * every cumulative energy counter in this file (`imported`/`exported` and their
- * `daily_`/`monthly_`/`yearly_` variants, across every component type) already carries
- * `unit: 'Wh'`, which doubles as the exact selector for which fields this applies to. Values are
- * rounded to 2 decimal places once converted to kWh, matching how the admin UI and openWB's own
- * displays show kWh figures.
+ * Scales a Wh-denominated field's value for display - `unit: 'Wh'` doubles as the selector for
+ * which fields this applies to. Rounds to 2 decimals once converted to kWh.
  *
  * @param field - the field the value belongs to
  * @param value - the raw value, in Wh, as read from MQTT

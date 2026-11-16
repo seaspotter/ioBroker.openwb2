@@ -16,7 +16,6 @@ export interface ConnectionTabProps {
     onChange: (attr: string, value: unknown) => void;
     socket: AdminConnection;
     instanceId: string;
-    onToast: (text: string) => void;
 }
 
 interface ConnectionTabState {

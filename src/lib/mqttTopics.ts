@@ -49,6 +49,11 @@ const SIMPLE_API_TOPIC_PATTERN = new RegExp(
     `^openWB/simpleAPI/(${Object.values(SIMPLE_API_TYPE_SEGMENT).join('|')})/(\\d+)/(.+)$`,
 );
 
+/** Strips a leading `get/` segment, shared by every parser below - see ParsedSimpleApiTopic's docs. */
+function stripGetPrefix(rawFieldPath: string): string {
+    return rawFieldPath.startsWith('get/') ? rawFieldPath.slice('get/'.length) : rawFieldPath;
+}
+
 /**
  * Parses a `openWB/simpleAPI/<type>/<id>/<fieldPath>` topic (fieldPath may or may not start with
  * `get/` - see ParsedSimpleApiTopic). Deliberately does not match the id-less "lowest ID"
@@ -63,8 +68,7 @@ export function parseSimpleApiTopic(topic: string): ParsedSimpleApiTopic | undef
         return undefined;
     }
     const [, segment, idStr, rawFieldPath] = match;
-    const fieldPath = rawFieldPath.startsWith('get/') ? rawFieldPath.slice('get/'.length) : rawFieldPath;
-    return { type: SEGMENT_TO_TYPE[segment], id: Number(idStr), fieldPath };
+    return { type: SEGMENT_TO_TYPE[segment], id: Number(idStr), fieldPath: stripGetPrefix(rawFieldPath) };
 }
 
 export interface ParsedTotalTopic {
@@ -91,8 +95,7 @@ export function parseTotalTopic(topic: string): ParsedTotalTopic | undefined {
         return undefined;
     }
     const [, type, rawFieldPath] = match;
-    const fieldPath = rawFieldPath.startsWith('get/') ? rawFieldPath.slice('get/'.length) : rawFieldPath;
-    return { type: type as 'pv' | 'chargepoint', fieldPath };
+    return { type: type as 'pv' | 'chargepoint', fieldPath: stripGetPrefix(rawFieldPath) };
 }
 
 export interface ParsedHomeConsumptionTopic {
